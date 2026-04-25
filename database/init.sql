@@ -4,7 +4,7 @@ CREATE TABLE kullanicilar (
     ad_soyad VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
     sifre_hash VARCHAR(255) NOT NULL,
-    rol VARCHAR(20) DEFAULT 'kullanici' -- 'kullanici' veya 'admin'
+    rol VARCHAR(20) DEFAULT 'kullanici'
 );
 
 -- 1. Eserleri İnceleme (Sanatçılar dahil)
@@ -32,7 +32,7 @@ CREATE TABLE etkinlikler (
     kontenjan INTEGER NOT NULL
 );
 
--- 3. Favorilere Ekleme (Sadece eserler için)
+-- 3. Favorilere Ekleme
 CREATE TABLE favoriler (
     kullanici_id INTEGER REFERENCES kullanicilar(id) ON DELETE CASCADE,
     eser_id INTEGER REFERENCES eserler(id) ON DELETE CASCADE,
@@ -46,21 +46,21 @@ CREATE TABLE kuponlar (
     indirim_yuzdesi INTEGER NOT NULL
 );
 
--- 4, 5, 6 ve 8. Satın Alma, Rezervasyon ve Takip
+-- 4, 5, 6, 8. Satın Alma, Rezervasyon ve Takip
 CREATE TABLE islemler (
     id SERIAL PRIMARY KEY,
     kullanici_id INTEGER REFERENCES kullanicilar(id),
-    eser_id INTEGER REFERENCES eserler(id), -- Eser satın alınıyorsa dolu
-    etkinlik_id INTEGER REFERENCES etkinlikler(id), -- Rezervasyon yapılıyorsa dolu
-    kupon_id INTEGER REFERENCES kuponlar(id), -- İndirim kullanıldıysa
-    katilimci_sayisi INTEGER DEFAULT 1, -- Etkinlik rezervasyonu için
+    eser_id INTEGER REFERENCES eserler(id),
+    etkinlik_id INTEGER REFERENCES etkinlikler(id),
+    kupon_id INTEGER REFERENCES kuponlar(id),
+    katilimci_sayisi INTEGER DEFAULT 1,
     toplam_tutar DECIMAL(10,2) NOT NULL,
     odeme_yontemi VARCHAR(50),
-    durum VARCHAR(50) DEFAULT 'Onaylandı', -- 'İptal Edildi', 'Tamamlandı'
+    durum VARCHAR(50) DEFAULT 'Onaylandı',
     islem_tarihi TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- 12, 13, 14 ve 15. Yorum, Değerlendirme, Yanıt ve Güvenilirlik
+-- 12, 13, 14, 15. Yorum, Değerlendirme, Yanıt
 CREATE TABLE yorumlar (
     id SERIAL PRIMARY KEY,
     kullanici_id INTEGER REFERENCES kullanicilar(id) NOT NULL,
@@ -80,7 +80,7 @@ CREATE TABLE destek_talepleri (
     kullanici_id INTEGER REFERENCES kullanicilar(id),
     konu VARCHAR(150) NOT NULL,
     mesaj TEXT NOT NULL,
-    durum VARCHAR(50) DEFAULT 'Açık', -- 'Yanıtlandı', 'Kapalı'
+    durum VARCHAR(50) DEFAULT 'Açık',
     admin_yaniti TEXT
 );
 
@@ -88,9 +88,6 @@ CREATE TABLE destek_talepleri (
 CREATE TABLE karsilastirmalar (
     id SERIAL PRIMARY KEY,
     kullanici_id INTEGER REFERENCES kullanicilar(id) ON DELETE CASCADE,
-    tip VARCHAR(20) NOT NULL, -- 'eser' veya 'etkinlik'
+    tip VARCHAR(20) NOT NULL,
     oge_idler JSONB NOT NULL
 );
-
--- Dummy Admin User
-INSERT INTO kullanicilar (ad_soyad, email, sifre_hash, rol) VALUES ('Admin User', 'admin@gallery.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin');

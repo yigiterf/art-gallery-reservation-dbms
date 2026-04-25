@@ -1,20 +1,16 @@
 const express = require('express');
 const cors = require('cors');
+const pool = require('./db');
 require('dotenv').config();
-const { Pool } = require('pg');
+
+const eserRoutes = require('./routes/eserRoutes');
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-const pool = new Pool({
-  user: process.env.DB_USER,
-  host: process.env.DB_HOST,
-  database: process.env.DB_NAME,
-  password: process.env.DB_PASSWORD,
-  port: process.env.DB_PORT,
-});
+app.use('/api/eserler', eserRoutes);
 
 app.get('/api/health', async (req, res) => {
   try {
