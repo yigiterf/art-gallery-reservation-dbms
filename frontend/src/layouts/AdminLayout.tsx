@@ -1,5 +1,5 @@
 import React from 'react';
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Users, 
@@ -16,6 +16,13 @@ import {
 
 const AdminLayout: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    navigate('/login');
+  };
 
   const menuItems = [
     { path: '/admin', icon: <LayoutDashboard size={20} />, label: 'Dashboard' },
@@ -61,7 +68,10 @@ const AdminLayout: React.FC = () => {
         </nav>
 
         <div className="p-4 border-t border-slate-800">
-          <button className="flex items-center space-x-3 px-4 py-3 w-full rounded-xl text-slate-400 hover:bg-slate-800 hover:text-rose-400 transition-all duration-200">
+          <button 
+            onClick={handleLogout}
+            className="flex items-center space-x-3 px-4 py-3 w-full rounded-xl text-slate-400 hover:bg-slate-800 hover:text-rose-400 transition-all duration-200"
+          >
             <LogOut size={20} />
             <span className="font-medium">Çıkış Yap</span>
           </button>
