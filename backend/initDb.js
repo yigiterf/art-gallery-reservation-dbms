@@ -89,6 +89,12 @@ const initDb = async () => {
           tip VARCHAR(20) NOT NULL,
           oge_idler JSONB NOT NULL
       );
+
+      ALTER TABLE sanatcilar ADD COLUMN IF NOT EXISTS kullanici_id INTEGER REFERENCES kullanicilar(id) ON DELETE CASCADE;
+      
+      ALTER TABLE kullanicilar ADD COLUMN IF NOT EXISTS yas INTEGER;
+      ALTER TABLE kullanicilar ADD COLUMN IF NOT EXISTS cinsiyet VARCHAR(20);
+      ALTER TABLE etkinlikler ADD COLUMN IF NOT EXISTS sanatci_id INTEGER REFERENCES sanatcilar(id) ON DELETE CASCADE;
     `);
     
     console.log('Veritabanı tabloları başarıyla ayarlandı.');

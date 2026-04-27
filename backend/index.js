@@ -5,17 +5,29 @@ require('dotenv').config();
 
 const eserRoutes = require('./routes/eserRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const authRoutes = require('./routes/authRoutes');
+const uploadRoutes = require('./routes/uploadRoutes');
+const etkinlikRoutes = require('./routes/etkinlikRoutes');
+const destekRoutes = require('./routes/destekRoutes');
+const path = require('path');
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
+// Resim dosyalarını dışarıya public link olarak açma
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 const initDb = require('./initDb');
 initDb();
 
+app.use('/api/auth', authRoutes);
+app.use('/api/upload', uploadRoutes);
 app.use('/api/eserler', eserRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/etkinlikler', etkinlikRoutes);
+app.use('/api/destek', destekRoutes);
 
 app.get('/api/health', async (req, res) => {
   try {
