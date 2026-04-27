@@ -4,13 +4,18 @@ const pool = require('./db');
 require('dotenv').config();
 
 const eserRoutes = require('./routes/eserRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
+const initDb = require('./initDb');
+initDb();
+
 app.use('/api/eserler', eserRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.get('/api/health', async (req, res) => {
   try {
