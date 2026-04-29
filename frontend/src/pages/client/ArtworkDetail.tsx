@@ -8,6 +8,8 @@ const ArtworkDetail: React.FC = () => {
   const navigate = useNavigate();
   const [art, setArt] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [purchasing, setPurchasing] = useState(false);
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   useEffect(() => {
     // Eserleri çek, içlerinden eşleşeni bul. Normalde id bazlı backend endpoint'i olur
@@ -21,6 +23,31 @@ const ArtworkDetail: React.FC = () => {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [id]);
+
+  const handlePurchase = async () => {
+    if (!user.id) {
+      alert('Satın almak için giriş yapmalısınız.');
+      return navigate('/login');
+    }
+
+    setPurchasing(true);
+    try {
+      await axios.post('http://localhost:5000/api/islemler', {
+        kullanici_id: user.id,
+        eser_id: art.id,
+        toplam_tutar: art.fiyat,
+        katilimci_sayisi: 1,
+        odeme_yontemi: 'Kredi Kartı'
+      });
+      alert('Satın alma başarılı! Eseriniz kargoya verilmek üzere hazırlanıyor.');
+      navigate('/profile');
+    } catch (err) {
+      console.error(err);
+      alert('İşlem başarısız oldu.');
+    } finally {
+      setPurchasing(false);
+    }
+  };
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div></div>;
@@ -90,8 +117,12 @@ const ArtworkDetail: React.FC = () => {
                </div>
              </div>
 
-             <button className="w-full bg-indigo-600 text-white font-bold text-lg py-4 rounded-xl hover:bg-indigo-700 transition-colors shadow-xl shadow-indigo-200">
-               Sepete Ekle ve Satın Al
+             <button 
+               onClick={handlePurchase}
+               disabled={purchasing}
+               className="w-full bg-indigo-600 text-white font-bold text-lg py-4 rounded-xl hover:bg-indigo-700 transition-colors shadow-xl shadow-indigo-200 disabled:opacity-50"
+             >
+               {purchasing ? 'İşleniyor...' : 'Sepete Ekle ve Satın Al'}
              </button>
           </div>
         </div>

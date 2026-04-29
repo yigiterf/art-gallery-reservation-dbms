@@ -16,6 +16,8 @@ import Register from './pages/auth/Register';
 // Client & Seller Pages
 import HomePage from './pages/client/HomePage';
 import ArtworkDetail from './pages/client/ArtworkDetail';
+import EventsPage from './pages/client/EventsPage';
+import ProfilePage from './pages/client/ProfilePage';
 import SellerDashboard from './pages/seller/SellerDashboard';
 
 import './index.css';
@@ -33,6 +35,8 @@ function App() {
         {/* Client Route */}
         <Route path="/home" element={<HomePage />} />
         <Route path="/eser/:id" element={<ArtworkDetail />} />
+        <Route path="/etkinlikler" element={<EventsPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
 
         {/* Seller Route */}
         <Route path="/seller/dashboard" element={<SellerDashboard />} />

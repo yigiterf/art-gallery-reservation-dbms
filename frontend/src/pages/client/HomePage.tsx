@@ -34,11 +34,16 @@ const HomePage: React.FC = () => {
       <nav className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
-            <div className="flex items-center gap-2">
+            <Link to="/home" className="flex items-center gap-2">
               <div className="w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center font-bold text-xl shadow-lg shadow-indigo-200">
                 A
               </div>
               <span className="text-xl font-bold tracking-tight text-slate-800">ArtGallery</span>
+            </Link>
+            
+            <div className="flex gap-6 hidden md:flex items-center font-medium text-slate-600">
+              <Link to="/home" className="text-indigo-600 border-b-2 border-indigo-600 pb-1">Eserler</Link>
+              <Link to="/etkinlikler" className="hover:text-indigo-600 transition-colors">Etkinlikler</Link>
             </div>
             
             <div className="flex-1 max-w-xl mx-8 hidden md:block">
@@ -56,6 +61,9 @@ const HomePage: React.FC = () => {
               <button className="p-2 text-slate-500 hover:text-indigo-600 transition-colors">
                 <Heart size={24} />
               </button>
+              <Link to="/profile" className="p-2 text-slate-500 hover:text-indigo-600 transition-colors font-medium">
+                Profilim
+              </Link>
               <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full font-medium transition-colors">
                 <LogOut size={18} />
                 Çıkış

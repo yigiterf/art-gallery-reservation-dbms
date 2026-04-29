@@ -1,5 +1,16 @@
 const pool = require('../db');
 
+// Tüm etkinlikleri getir
+exports.getAllEtkinlikler = async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM etkinlikler ORDER BY tarih_saat ASC');
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Etkinlikleri getirme hatası:', error);
+    res.status(500).json({ message: 'Etkinlikler alınamadı.' });
+  }
+};
+
 // Etkinlik Oluştur
 exports.createEtkinlik = async (req, res) => {
   const { baslik, tarih_saat, ucret, kontenjan, sanatci_id } = req.body;
