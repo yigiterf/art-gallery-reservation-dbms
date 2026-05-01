@@ -177,10 +177,7 @@ const EventsPage: React.FC = () => {
                       <span className="font-medium">Kontenjan: <span className="text-slate-800 font-bold">{event.kontenjan}</span> Kişi</span>
                     </div>
                   </div>
-                  
-                  </div>
                 </Link>
-                
                 <div className="p-6 pt-0 mt-auto border-t border-slate-100 flex items-center justify-between">
                   <div className="text-sm font-medium text-slate-500">
                     Hemen yerinizi ayırtın!
