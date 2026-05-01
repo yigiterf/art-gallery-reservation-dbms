@@ -7,7 +7,11 @@ import Dashboard from './pages/admin/Dashboard';
 import Users from './pages/admin/Users';
 import Artists from './pages/admin/Artists';
 import Artworks from './pages/admin/Artworks';
-import PlaceholderPage from './pages/admin/PlaceholderPage';
+import Events from './pages/admin/Events';
+import Transactions from './pages/admin/Transactions';
+import Reviews from './pages/admin/Reviews';
+import Coupons from './pages/admin/Coupons';
+import Support from './pages/admin/Support';
 
 // Auth Pages
 import Login from './pages/auth/Login';
@@ -47,11 +51,11 @@ function App() {
           <Route path="users" element={<Users />} />
           <Route path="artists" element={<Artists />} />
           <Route path="artworks" element={<Artworks />} />
-          <Route path="events" element={<PlaceholderPage title="Etkinlikler Yönetimi" />} />
-          <Route path="coupons" element={<PlaceholderPage title="Kuponlar Yönetimi" />} />
-          <Route path="transactions" element={<PlaceholderPage title="İşlemler (Sipariş/Rezervasyon)" />} />
-          <Route path="reviews" element={<PlaceholderPage title="Yorumlar ve Değerlendirmeler" />} />
-          <Route path="support" element={<PlaceholderPage title="Müşteri Destek Talepleri" />} />
+          <Route path="events" element={<Events />} />
+          <Route path="coupons" element={<Coupons />} />
+          <Route path="transactions" element={<Transactions />} />
+          <Route path="reviews" element={<Reviews />} />
+          <Route path="support" element={<Support />} />
         </Route>
       </Routes>
     </Router>
