@@ -146,8 +146,8 @@ const EventsPage: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {events.map((event) => (
-              <div key={event.id} className="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-slate-100 group flex flex-col cursor-pointer">
-                <div className="p-6 flex flex-col flex-1">
+              <div key={event.id} className="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-slate-100 group flex flex-col">
+                <Link to={`/etkinlik/${event.id}`} className="p-6 flex flex-col flex-1 cursor-pointer">
                   <div className="flex justify-between items-start mb-4">
                     <h3 className="font-bold text-xl text-slate-800 line-clamp-2 pr-4">{event.baslik}</h3>
                     <div className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg font-bold">
@@ -178,19 +178,21 @@ const EventsPage: React.FC = () => {
                     </div>
                   </div>
                   
-                  <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between">
-                    <div className="text-sm font-medium text-slate-500">
-                      Hemen yerinizi ayırtın!
-                    </div>
-                    <button 
-                      onClick={() => handleReservation(event)}
-                      disabled={reserving === event.id || event.kontenjan <= 0}
-                      className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Ticket size={18} />
-                      {reserving === event.id ? 'İşleniyor...' : (event.kontenjan > 0 ? 'Rezervasyon Yap' : 'Dolu')}
-                    </button>
                   </div>
+                </Link>
+                
+                <div className="p-6 pt-0 mt-auto border-t border-slate-100 flex items-center justify-between">
+                  <div className="text-sm font-medium text-slate-500">
+                    Hemen yerinizi ayırtın!
+                  </div>
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); handleReservation(event); }}
+                    disabled={reserving === event.id || event.kontenjan <= 0}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Ticket size={18} />
+                    {reserving === event.id ? 'İşleniyor...' : (event.kontenjan > 0 ? 'Rezervasyon Yap' : 'Dolu')}
+                  </button>
                 </div>
               </div>
             ))}

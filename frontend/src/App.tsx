@@ -21,6 +21,7 @@ import Register from './pages/auth/Register';
 import HomePage from './pages/client/HomePage';
 import ArtworkDetail from './pages/client/ArtworkDetail';
 import EventsPage from './pages/client/EventsPage';
+import EventDetail from './pages/client/EventDetail';
 import ProfilePage from './pages/client/ProfilePage';
 import FavoritesPage from './pages/client/FavoritesPage';
 import SellerDashboard from './pages/seller/SellerDashboard';
@@ -41,6 +42,7 @@ function App() {
         <Route path="/home" element={<HomePage />} />
         <Route path="/eser/:id" element={<ArtworkDetail />} />
         <Route path="/etkinlikler" element={<EventsPage />} />
+        <Route path="/etkinlik/:id" element={<EventDetail />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/favorites" element={<FavoritesPage />} />
 
