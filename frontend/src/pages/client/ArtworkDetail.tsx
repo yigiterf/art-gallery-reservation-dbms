@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowLeft, Brush, ShieldCheck, Truck, Clock } from 'lucide-react';
+import { ArrowLeft, Brush, ShieldCheck, Truck, Clock, Heart } from 'lucide-react';
 
 const ArtworkDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -9,12 +9,11 @@ const ArtworkDetail: React.FC = () => {
   const [art, setArt] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [purchasing, setPurchasing] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [favLoading, setFavLoading] = useState(false);
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   useEffect(() => {
-    // Eserleri çek, içlerinden eşleşeni bul. Normalde id bazlı backend endpoint'i olur
-    // Ödev/prototip mantığı için genel veriden filtreleyebilir veya özel id ile alabiliriz.
-    // Şimdilik liste çekip filtreliyorum. İleride GET /api/eserler/:id yapılabilir.
     axios.get('http://localhost:5000/api/eserler')
       .then(res => {
         const found = res.data.find((item: any) => item.id === Number(id));
@@ -22,6 +21,13 @@ const ArtworkDetail: React.FC = () => {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
+
+    // Bu eserin favoride olup olmadığını kontrol et
+    if (user.id) {
+      axios.get(`http://localhost:5000/api/favoriler/kullanici/${user.id}/idler`)
+        .then(res => setIsFavorite((res.data as number[]).includes(Number(id))))
+        .catch(console.error);
+    }
   }, [id]);
 
   const handlePurchase = async () => {
@@ -46,6 +52,24 @@ const ArtworkDetail: React.FC = () => {
       alert('İşlem başarısız oldu.');
     } finally {
       setPurchasing(false);
+    }
+  };
+
+  const toggleFavorite = async () => {
+    if (!user.id) return navigate('/login');
+    setFavLoading(true);
+    try {
+      if (isFavorite) {
+        await axios.delete(`http://localhost:5000/api/favoriler/${user.id}/${art.id}`);
+        setIsFavorite(false);
+      } else {
+        await axios.post('http://localhost:5000/api/favoriler', { kullanici_id: user.id, eser_id: art.id });
+        setIsFavorite(true);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setFavLoading(false);
     }
   };
 
@@ -117,13 +141,31 @@ const ArtworkDetail: React.FC = () => {
                </div>
              </div>
 
-             <button 
-               onClick={handlePurchase}
-               disabled={purchasing}
-               className="w-full bg-indigo-600 text-white font-bold text-lg py-4 rounded-xl hover:bg-indigo-700 transition-colors shadow-xl shadow-indigo-200 disabled:opacity-50"
-             >
-               {purchasing ? 'İşleniyor...' : 'Sepete Ekle ve Satın Al'}
-             </button>
+             <div className="flex gap-3">
+               <button 
+                 onClick={handlePurchase}
+                 disabled={purchasing}
+                 className="flex-1 bg-indigo-600 text-white font-bold text-lg py-4 rounded-xl hover:bg-indigo-700 transition-colors shadow-xl shadow-indigo-200 disabled:opacity-50"
+               >
+                 {purchasing ? 'İşleniyor...' : 'Sepete Ekle ve Satın Al'}
+               </button>
+               <button
+                 onClick={toggleFavorite}
+                 disabled={favLoading}
+                 className={`p-4 rounded-xl border-2 transition-all shadow-sm disabled:opacity-60 ${
+                   isFavorite
+                     ? 'bg-rose-500 border-rose-500 text-white shadow-rose-200 shadow-md'
+                     : 'border-slate-200 text-slate-400 hover:border-rose-300 hover:text-rose-400'
+                 }`}
+                 title={isFavorite ? 'Favorilerden Çıkar' : 'Favorilere Ekle'}
+               >
+                 {favLoading ? (
+                   <div className="w-6 h-6 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                 ) : (
+                   <Heart size={24} className={isFavorite ? 'fill-white' : ''} />
+                 )}
+               </button>
+             </div>
           </div>
         </div>
       </div>

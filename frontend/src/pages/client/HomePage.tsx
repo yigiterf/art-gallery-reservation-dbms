@@ -7,9 +7,11 @@ const HomePage: React.FC = () => {
   const navigate = useNavigate();
   const [artworks, setArtworks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
+  const [togglingId, setTogglingId] = useState<number | null>(null);
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   useEffect(() => {
-    // Check if customer
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     if (!user.id) {
       navigate('/login');
@@ -20,7 +22,32 @@ const HomePage: React.FC = () => {
       .then(res => setArtworks(res.data))
       .catch(console.error)
       .finally(() => setLoading(false));
+
+    // Kullanıcının favori ID'lerini yükle
+    axios.get(`http://localhost:5000/api/favoriler/kullanici/${user.id}/idler`)
+      .then(res => setFavoriteIds(new Set(res.data)))
+      .catch(console.error);
   }, [navigate]);
+
+  const toggleFavorite = async (e: React.MouseEvent, artId: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user.id) return navigate('/login');
+    setTogglingId(artId);
+    try {
+      if (favoriteIds.has(artId)) {
+        await axios.delete(`http://localhost:5000/api/favoriler/${user.id}/${artId}`);
+        setFavoriteIds(prev => { const s = new Set(prev); s.delete(artId); return s; });
+      } else {
+        await axios.post('http://localhost:5000/api/favoriler', { kullanici_id: user.id, eser_id: artId });
+        setFavoriteIds(prev => new Set(prev).add(artId));
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setTogglingId(null);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -58,9 +85,14 @@ const HomePage: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-4">
-              <button className="p-2 text-slate-500 hover:text-indigo-600 transition-colors">
-                <Heart size={24} />
-              </button>
+              <Link to="/favorites" className="p-2 text-slate-500 hover:text-rose-500 transition-colors relative">
+                <Heart size={24} className={favoriteIds.size > 0 ? 'fill-rose-400 text-rose-400' : ''} />
+                {favoriteIds.size > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                    {favoriteIds.size > 9 ? '9+' : favoriteIds.size}
+                  </span>
+                )}
+              </Link>
               <Link to="/profile" className="p-2 text-slate-500 hover:text-indigo-600 transition-colors font-medium">
                 Profilim
               </Link>
@@ -111,8 +143,21 @@ const HomePage: React.FC = () => {
                       <Brush size={48} />
                     </div>
                   )}
-                  <button onClick={(e) => { e.preventDefault(); /* Favori ekleme mantigi buraya eklenebilir */ }} className="absolute top-4 right-4 p-2.5 bg-white/50 backdrop-blur-md rounded-full text-slate-600 hover:text-rose-500 hover:bg-white transition-all opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0">
-                    <Heart size={20} />
+                  <button
+                    onClick={(e) => toggleFavorite(e, art.id)}
+                    disabled={togglingId === art.id}
+                    className={`absolute top-4 right-4 p-2.5 backdrop-blur-md rounded-full transition-all opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 disabled:opacity-60 ${
+                      favoriteIds.has(art.id)
+                        ? 'bg-rose-500 text-white shadow-lg shadow-rose-300'
+                        : 'bg-white/60 text-slate-600 hover:text-rose-500 hover:bg-white'
+                    }`}
+                    title={favoriteIds.has(art.id) ? 'Favorilerden Çıkar' : 'Favorilere Ekle'}
+                  >
+                    {togglingId === art.id ? (
+                      <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Heart size={18} className={favoriteIds.has(art.id) ? 'fill-white' : ''} />
+                    )}
                   </button>
                 </div>
                 <div className="p-5 flex flex-col flex-1">

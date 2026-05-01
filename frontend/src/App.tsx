@@ -22,6 +22,7 @@ import HomePage from './pages/client/HomePage';
 import ArtworkDetail from './pages/client/ArtworkDetail';
 import EventsPage from './pages/client/EventsPage';
 import ProfilePage from './pages/client/ProfilePage';
+import FavoritesPage from './pages/client/FavoritesPage';
 import SellerDashboard from './pages/seller/SellerDashboard';
 
 import './index.css';
@@ -41,6 +42,7 @@ function App() {
         <Route path="/eser/:id" element={<ArtworkDetail />} />
         <Route path="/etkinlikler" element={<EventsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/favorites" element={<FavoritesPage />} />
 
         {/* Seller Route */}
         <Route path="/seller/dashboard" element={<SellerDashboard />} />

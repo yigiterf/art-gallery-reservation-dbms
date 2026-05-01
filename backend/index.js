@@ -10,6 +10,7 @@ const uploadRoutes = require('./routes/uploadRoutes');
 const etkinlikRoutes = require('./routes/etkinlikRoutes');
 const destekRoutes = require('./routes/destekRoutes');
 const islemRoutes = require('./routes/islemRoutes');
+const favoriRoutes = require('./routes/favoriRoutes');
 const path = require('path');
 
 const app = express();
@@ -30,6 +31,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/etkinlikler', etkinlikRoutes);
 app.use('/api/destek', destekRoutes);
 app.use('/api/islemler', islemRoutes);
+app.use('/api/favoriler', favoriRoutes);
 
 app.get('/api/health', async (req, res) => {
   try {
