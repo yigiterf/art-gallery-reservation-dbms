@@ -1,0 +1,114 @@
+﻿Database Management Systems - Project Assignment
+VER─░TABANI PROJE ├ûDEV─░
+Online Sanat Galerisi ve At├Âlye Rezervasyon Sistemi
+Bu ├Âdev, y├╝klenen ├Ârnekteki e-ticaret senaryosu temel al─▒narak farkl─▒ bir konuya uyarlanm─▒┼şt─▒r.
+├û─şrencilerden, a┼şa─ş─▒da verilen gereksinimlere uygun bir veritaban─▒ tasar─▒m─▒ geli┼ştirmeleri; tablolar─▒,
+ili┼şkileri ve kullan─▒c─▒ aray├╝z├╝ mant─▒─ş─▒n─▒ a├ğ─▒klayan bir rapor haz─▒rlamalar─▒ beklenmektedir.
+Sistem Gereksinimleri
+1. Eserleri ─░nceleme
+´éÀ Sanat eserlerinin detaylar─▒n─▒ g├Âr├╝nt├╝leme
+´éÀ Eser g├Ârsellerini g├Âr├╝nt├╝leme
+´éÀ Eser a├ğ─▒klamalar─▒n─▒ ve sanat├ğ─▒ bilgilerini okuma
+2. At├Âlye ve Etkinlikleri G├Âr├╝nt├╝leme
+´éÀ D├╝zenlenen at├Âlye ve etkinlikleri listeleme
+´éÀ Etkinlik tarihi, saati, kontenjan─▒ ve ├╝cret bilgilerini g├Âr├╝nt├╝leme
+´éÀ Etkinlik detay sayfas─▒n─▒ inceleme
+3. Favorilere Ekleme
+´éÀ Be─şenilen eserleri favorilere ekleme
+´éÀ Favori listesini g├Âr├╝nt├╝leme
+´éÀ Favorilerden eser ├ğ─▒karma
+4. Rezervasyon Olu┼şturma
+´éÀ At├Âlye veya etkinlik i├ğin rezervasyon yapma
+´éÀ Kat─▒l─▒mc─▒ say─▒s─▒n─▒ se├ğme
+´éÀ Uygun tarih ve saat se├ğimi yapma
+5. Rezervasyonu G├╝ncelleme
+´éÀ Rezervasyon tarihini de─şi┼ştirme
+´éÀ Kat─▒l─▒mc─▒ say─▒s─▒n─▒ g├╝ncelleme
+´éÀ Rezervasyonu iptal etme
+6. Sat─▒n Alma ve ├ûdeme ─░┼şlemleri
+´éÀ Etkinlik veya eser sat─▒n alma
+´éÀ ├ûdeme y├Ântemini se├ğme
+´éÀ Sipari┼şi veya rezervasyonu onaylama
+7. Hesap Y├Ânetimi
+´éÀ Kullan─▒c─▒ kayd─▒ olu┼şturma
+´éÀ Kullan─▒c─▒ giri┼şi yapma
+´éÀ Profil bilgilerini g├╝ncelleme
+´éÀ ┼Şifre de─şi┼ştirme
+8. Sipari┼ş ve Rezervasyon Takibi
+´éÀ Sat─▒n al─▒nan eserlerin durumunu kontrol etme
+´éÀ Yap─▒lan rezervasyonlar─▒n durumunu g├Âr├╝nt├╝leme
+´éÀ Ge├ğmi┼ş sipari┼ş ve rezervasyonlar─▒ listeleme
+9. ─░ndirim ve Kampanyalar
+
+-- 1 of 3 --
+
+Database Management Systems - Project Assignment
+´éÀ ─░ndirim kuponu kullanma
+´éÀ Kampanyal─▒ etkinlikleri veya eserleri g├Âr├╝nt├╝leme
+´éÀ Belirli kullan─▒c─▒lara ├Âzel f─▒rsatlar sunma
+10. M├╝┼şteri Destek
+´éÀ ─░leti┼şim formu ├╝zerinden soru g├Ânderme
+´éÀ Canl─▒ destek veya mesaj sistemi kullanma
+´éÀ Destek taleplerinin durumunu g├Âr├╝nt├╝leme
+11. Eser ve Etkinlik Kar┼ş─▒la┼şt─▒rma
+´éÀ Birden fazla etkinli─şi tarih, ├╝cret ve kontenjan a├ğ─▒s─▒ndan kar┼ş─▒la┼şt─▒rma
+´éÀ Birden fazla eseri kategori, fiyat ve sanat├ğ─▒ a├ğ─▒s─▒ndan kar┼ş─▒la┼şt─▒rma
+´éÀ Kar┼ş─▒la┼şt─▒rma sonu├ğlar─▒n─▒ kaydetme
+12. Yorum Ekleme
+´éÀ Kullan─▒c─▒lar─▒n eserler hakk─▒nda yorum yapabilmesi
+´éÀ Kullan─▒c─▒lar─▒n kat─▒ld─▒klar─▒ etkinlikler hakk─▒nda de─şerlendirme yazabilmesi
+´éÀ Di─şer kullan─▒c─▒ yorumlar─▒n─▒ g├Âr├╝nt├╝leyebilmesi
+13. Yorumlar─▒ De─şerlendirme ve Filtreleme
+´éÀ Yorumlara puan verme veya faydal─▒ bulma oyu verme
+´éÀ Yorumlar─▒ en yeni, en y├╝ksek puanl─▒ veya en faydal─▒ olacak ┼şekilde filtreleme
+´éÀ Ortalama puan bilgilerini g├Âr├╝nt├╝leme
+14. Yorumlara Yan─▒t Verme
+´éÀ Galeri y├Âneticisinin veya etkinlik sorumlusunun yorumlara yan─▒t verebilmesi
+´éÀ Kullan─▒c─▒lar─▒n bu yan─▒tlar─▒ g├Âr├╝nt├╝leyebilmesi
+15. Do─şrulama ve G├╝venilirlik
+´éÀ Yorumlar─▒n yaln─▒zca giri┼ş yapm─▒┼ş kullan─▒c─▒lar taraf─▒ndan yap─▒labilmesi
+´éÀ Etkinlik yorumu yapabilmek i├ğin kullan─▒c─▒n─▒n ilgili etkinli─şe kat─▒lm─▒┼ş olmas─▒
+´éÀ Sat─▒n al─▒nan eserler i├ğin do─şrulanm─▒┼ş de─şerlendirme sistemi kurulmas─▒
+16. ─░statistik ve Raporlama
+´éÀ Eser baz─▒nda toplam be─şeni, yorum ve g├Âr├╝nt├╝lenme say─▒lar─▒n─▒ g├Âsterme
+´éÀ Etkinlik baz─▒nda doluluk oran─▒, ortalama puan ve toplam rezervasyon say─▒lar─▒n─▒ g├Âsterme
+´éÀ Y├Ânetici i├ğin ├Âzet rapor ekran─▒ olu┼şturma
+
+-- 2 of 3 --
+
+Database Management Systems - Project Assignment
+De─şerlendirme ve 100 Puanl─▒k ├ûl├ğek
+Ham puan yap─▒s─▒: Aray├╝z├╝n etkinli─şi 10 puan; di─şer 16 madde ise ayr─▒ ayr─▒ 6 puand─▒r. Bu durumda ham
+toplam puan 106 olmaktad─▒r.
+Bile┼şen Ham Puan A├ğ─▒klama
+Kullan─▒c─▒ aray├╝z├╝n├╝n etkinli─şi 10 Aray├╝z tasar─▒m─▒n─▒n a├ğ─▒kl─▒─ş─▒,
+i┼şlevselli─şi ve genel sunumu
+16 gereksinim maddesinin
+tamam─▒
+96 Her bir madde 6 puan olacak
+┼şekilde de─şerlendirilir
+Ham toplam 106 ├û─şrencinin do─şrudan toplad─▒─ş─▒
+puan
+Rapor eksikli─şi cezas─▒ -30 Rapor teslim edilmezse ham
+puandan d├╝┼ş├╝l├╝r
+100ÔÇÖl├╝k sisteme d├Ân├╝┼şt├╝rme form├╝l├╝:
+Final Not = (Ham Puan / 106) ├ù 100
+Uygulama notu: ├ûnce ├Â─şrencinin ham puan─▒ hesaplan─▒r. E─şer rapor verilmemi┼şse 30 puanl─▒k kesinti bu
+ham puan ├╝zerinden uygulan─▒r. Son a┼şamada elde edilen puan 100ÔÇÖl├╝k sisteme yukar─▒daki form├╝lle
+d├Ân├╝┼şt├╝r├╝l├╝r.
+├ûrnek D├Ân├╝┼ş├╝m Tablosu
+Ham Puan 100ÔÇÖl├╝k Kar┼ş─▒l─▒k Not
+106 100.00 Tam puan
+95 89.62 Y├╝ksek ba┼şar─▒
+80 75.47 Orta-iyi d├╝zey
+60 56.60 Geli┼ştirilmeli
+Rapor ─░├ğeri─şinde Beklenenler
+´éÀ Kapak sayfas─▒nda geli┼ştirilen sistemin g├Ârseline yer verilmesi
+´éÀ Veritaban─▒ tasar─▒m─▒n─▒n sunulmas─▒
+´éÀ Tablolar─▒n ve ili┼şkilerin a├ğ─▒klanmas─▒
+´éÀ Kullan─▒c─▒ aray├╝z├╝ hakk─▒nda k─▒sa bilgilendirme yap─▒lmas─▒
+Not: Bu belge, 106 puanl─▒k ├Âzg├╝n de─şerlendirme yap─▒s─▒n─▒n 100 puanl─▒k sisteme d├Ân├╝┼şt├╝r├╝lm├╝┼ş h├ólini
+i├ğermektedir.
+
+-- 3 of 3 --
+
