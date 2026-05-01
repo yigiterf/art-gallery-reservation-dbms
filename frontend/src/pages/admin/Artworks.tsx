@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
-import { Trash2, ImageIcon, Plus, Search, X, Brush } from 'lucide-react';
+import { Trash2, ImageIcon, Plus, Search, X, Brush, UploadCloud } from 'lucide-react';
 
 const Artworks: React.FC = () => {
   const [artworks, setArtworks] = useState<any[]>([]);
@@ -10,12 +10,14 @@ const Artworks: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState('');
+  const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState({
     sanatci_id: '',
     baslik: '',
     aciklama: '',
     fiyat: '',
-    gorsel_url: '',
   });
 
   useEffect(() => {
@@ -53,20 +55,34 @@ const Artworks: React.FC = () => {
     e.preventDefault();
     setSaving(true);
     try {
+      let gorsel_url = '';
+      if (imageFile) {
+        setUploading(true);
+        const fd = new FormData();
+        fd.append('image', imageFile);
+        const uploadRes = await axios.post('http://localhost:5000/api/upload', fd, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        gorsel_url = uploadRes.data.url;
+        setUploading(false);
+      }
       await axios.post('http://localhost:5000/api/admin/artworks', {
         sanatci_id: parseInt(form.sanatci_id),
         baslik: form.baslik,
         aciklama: form.aciklama,
         fiyat: parseFloat(form.fiyat),
-        gorsel_url: form.gorsel_url,
+        gorsel_url,
       });
       setShowModal(false);
-      setForm({ sanatci_id: '', baslik: '', aciklama: '', fiyat: '', gorsel_url: '' });
+      setForm({ sanatci_id: '', baslik: '', aciklama: '', fiyat: '' });
+      setImageFile(null);
+      setImagePreview('');
       fetchArtworks();
     } catch {
       alert('Eser eklenirken hata oluştu.');
     } finally {
       setSaving(false);
+      setUploading(false);
     }
   };
 
@@ -234,32 +250,46 @@ const Artworks: React.FC = () => {
                     className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Görsel URL</label>
-                  <input
-                    type="url" value={form.gorsel_url}
-                    onChange={e => setForm({ ...form, gorsel_url: e.target.value })}
-                    placeholder="https://..."
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
-                  />
-                </div>
               </div>
-              {/* Görsel önizleme */}
-              {form.gorsel_url && (
-                <div className="rounded-xl overflow-hidden border border-slate-200 h-36">
-                  <img
-                    src={form.gorsel_url}
-                    alt="Önizleme"
-                    className="w-full h-full object-cover"
-                    onError={e => (e.currentTarget.style.display = 'none')}
+              {/* Görsel Yükle */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Görsel Yükle</label>
+                <div className="relative group w-full border-2 border-dashed border-slate-200 hover:border-indigo-400 rounded-xl transition-colors overflow-hidden cursor-pointer min-h-[100px] flex flex-col items-center justify-center">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={e => {
+                      const f = e.target.files?.[0];
+                      if (f) { setImageFile(f); setImagePreview(URL.createObjectURL(f)); }
+                    }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                   />
+                  {imagePreview ? (
+                    <img src={imagePreview} alt="Önizleme" className="w-full h-36 object-cover" />
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 py-6 text-slate-400 group-hover:text-indigo-500 transition-colors">
+                      <UploadCloud size={28} />
+                      <span className="text-sm font-medium">Dosya seçmek için tıklayın</span>
+                      <span className="text-xs">JPG, PNG, WEBP — Max 10MB</span>
+                    </div>
+                  )}
                 </div>
-              )}
+                {imageFile && (
+                  <div className="flex items-center justify-between mt-1.5">
+                    <span className="text-xs text-slate-500 truncate">{imageFile.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => { setImageFile(null); setImagePreview(''); }}
+                      className="text-xs text-rose-400 hover:text-rose-600 ml-2 shrink-0"
+                    >Kaldır</button>
+                  </div>
+                )}
+              </div>
               <button
-                type="submit" disabled={saving}
+                type="submit" disabled={saving || uploading}
                 className="w-full mt-2 py-3 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-all shadow-md shadow-indigo-500/20 disabled:opacity-60"
               >
-                {saving ? 'Ekleniyor...' : 'Eseri Kaydet'}
+                {uploading ? 'Görsel yükleniyor...' : saving ? 'Ekleniyor...' : 'Eseri Kaydet'}
               </button>
             </form>
           </div>
