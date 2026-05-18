@@ -108,3 +108,43 @@ exports.getMe = async (req, res) => {
     res.status(500).json({ message: 'Sunucu hatası.' });
   }
 };
+
+exports.updateProfile = async (req, res) => {
+  const { id } = req.params;
+  const { ad_soyad, email } = req.body;
+  try {
+    // E-posta çakışma kontrolü
+    const existing = await pool.query('SELECT id FROM kullanicilar WHERE email = $1 AND id != $2', [email, id]);
+    if (existing.rows.length > 0) {
+      return res.status(400).json({ message: 'Bu e-posta başka bir hesapta kullanılıyor.' });
+    }
+    const result = await pool.query(
+      'UPDATE kullanicilar SET ad_soyad = $1, email = $2 WHERE id = $3 RETURNING id, ad_soyad, email, rol',
+      [ad_soyad, email, id]
+    );
+    res.json({ message: 'Profil güncellendi.', user: result.rows[0] });
+  } catch (err) {
+    console.error('Profil güncelleme hatası:', err);
+    res.status(500).json({ message: 'Profil güncellenemedi.' });
+  }
+};
+
+exports.changePassword = async (req, res) => {
+  const { id } = req.params;
+  const { eski_sifre, yeni_sifre } = req.body;
+  try {
+    const result = await pool.query('SELECT sifre_hash FROM kullanicilar WHERE id = $1', [id]);
+    if (result.rows.length === 0) return res.status(404).json({ message: 'Kullanıcı bulunamadı.' });
+
+    const isMatch = await bcrypt.compare(eski_sifre, result.rows[0].sifre_hash);
+    if (!isMatch) return res.status(400).json({ message: 'Mevcut şifre yanlış.' });
+
+    const salt = await bcrypt.genSalt(10);
+    const yeni_hash = await bcrypt.hash(yeni_sifre, salt);
+    await pool.query('UPDATE kullanicilar SET sifre_hash = $1 WHERE id = $2', [yeni_hash, id]);
+    res.json({ message: 'Şifre başarıyla değiştirildi.' });
+  } catch (err) {
+    console.error('Şifre değiştirme hatası:', err);
+    res.status(500).json({ message: 'Şifre değiştirilemedi.' });
+  }
+};

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowLeft, Calendar, Clock, Users, Ticket, Star, MessageSquare, Send, CheckCircle, ThumbsUp } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock, Users, Ticket, Star, MessageSquare, Send, CheckCircle, ThumbsUp, Tag, X, ChevronDown, XCircle } from 'lucide-react';
 
 interface Review {
   id: number;
@@ -15,22 +15,13 @@ interface Review {
   tarih: string;
 }
 
+type SortOption = 'yeni' | 'puan' | 'faydali';
+
 const StarRating: React.FC<{ value: number; onChange?: (v: number) => void; readonly?: boolean }> = ({ value, onChange, readonly }) => (
   <div className="flex items-center gap-1">
     {[1, 2, 3, 4, 5].map(i => (
-      <button
-        key={i}
-        type="button"
-        disabled={readonly}
-        onClick={() => onChange && onChange(i)}
-        className={`transition-colors ${readonly ? 'cursor-default' : 'hover:scale-110 active:scale-95'}`}
-      >
-        <Star
-          size={readonly ? 14 : 22}
-          className={i <= value
-            ? 'text-amber-400 fill-amber-400'
-            : readonly ? 'text-slate-200 fill-slate-200' : 'text-slate-300 fill-slate-300 hover:text-amber-300'}
-        />
+      <button key={i} type="button" disabled={readonly} onClick={() => onChange && onChange(i)} className={`transition-colors ${readonly ? 'cursor-default' : 'hover:scale-110 active:scale-95'}`}>
+        <Star size={readonly ? 14 : 22} className={i <= value ? 'text-amber-400 fill-amber-400' : readonly ? 'text-slate-200 fill-slate-200' : 'text-slate-300 fill-slate-300 hover:text-amber-300'} />
       </button>
     ))}
   </div>
@@ -43,6 +34,15 @@ const EventDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [reserving, setReserving] = useState(false);
 
+  // ── Rezervasyon modalı ──
+  const [showResModal, setShowResModal] = useState(false);
+  const [katilimciSayisi, setKatilimciSayisi] = useState(1);
+  const [odemeYontemi, setOdemeYontemi] = useState('Online Kredi Kartı');
+  const [kuponKod, setKuponKod] = useState('');
+  const [kuponData, setKuponData] = useState<{ id: number; indirim_yuzdesi: number } | null>(null);
+  const [kuponLoading, setKuponLoading] = useState(false);
+  const [kuponMsg, setKuponMsg] = useState('');
+
   // Reviews
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewForm, setReviewForm] = useState({ puan: 5, metin: '' });
@@ -50,6 +50,7 @@ const EventDetail: React.FC = () => {
   const [votingId, setVotingId] = useState<number | null>(null);
   const [submitError, setSubmitError] = useState('');
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [sortBy, setSortBy] = useState<SortOption>('yeni');
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
@@ -57,9 +58,7 @@ const EventDetail: React.FC = () => {
     try {
       const res = await axios.get(`http://localhost:5000/api/yorumlar/etkinlik/${id}`);
       setReviews(res.data);
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e) { console.error(e); }
   };
 
   useEffect(() => {
@@ -70,35 +69,49 @@ const EventDetail: React.FC = () => {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-
     fetchReviews();
   }, [id]);
 
-  const handleReservation = async () => {
-    if (!user.id) {
-      alert('Rezervasyon için giriş yapmalısınız.');
-      return navigate('/login');
+  // ── Kupon doğrula ──
+  const handleKuponUygula = async () => {
+    if (!kuponKod.trim()) return;
+    setKuponLoading(true);
+    setKuponMsg('');
+    setKuponData(null);
+    try {
+      const res = await axios.get(`http://localhost:5000/api/islemler/kupon/${kuponKod.trim()}`);
+      setKuponData(res.data);
+      setKuponMsg(`✅ Kupon uygulandı! %${res.data.indirim_yuzdesi} indirim`);
+    } catch (err: any) {
+      setKuponMsg('❌ ' + (err.response?.data?.message || 'Geçersiz kupon.'));
+    } finally {
+      setKuponLoading(false);
     }
+  };
 
-    const attendees = prompt(`"${eventData.baslik}" etkinliği için kaç kişi katılacaksınız? (Birim Fiyat: ₺${eventData.ucret})`, "1");
-    if (!attendees) return;
+  const birimFiyat = eventData?.ucret || 0;
+  const araToplam = birimFiyat * katilimciSayisi;
+  const indirimTutar = kuponData ? (araToplam * kuponData.indirim_yuzdesi / 100) : 0;
+  const finalToplam = (araToplam - indirimTutar).toFixed(2);
 
-    const count = parseInt(attendees);
-    if (isNaN(count) || count <= 0) return alert('Geçerli bir sayı giriniz.');
-    if (count > eventData.kontenjan) return alert('Yeterli kontenjan bulunmamaktadır.');
+  const handleReservation = async () => {
+    if (!user.id) { alert('Rezervasyon için giriş yapmalısınız.'); return navigate('/login'); }
+    if (katilimciSayisi < 1) return alert('Geçerli bir katılımcı sayısı giriniz.');
+    if (katilimciSayisi > eventData.kontenjan) return alert('Yeterli kontenjan bulunmamaktadır.');
 
     setReserving(true);
     try {
       await axios.post('http://localhost:5000/api/islemler', {
         kullanici_id: user.id,
         etkinlik_id: eventData.id,
-        toplam_tutar: eventData.ucret * count,
-        katilimci_sayisi: count,
-        odeme_yontemi: 'Online Kredi Kartı'
+        toplam_tutar: finalToplam,
+        katilimci_sayisi: katilimciSayisi,
+        odeme_yontemi: odemeYontemi,
+        kupon_id: kuponData?.id || null,
       });
-      alert(`Rezervasyon başarılı! ${count} kişi için yeriniz ayrıldı.`);
-      // Update local quota
-      setEventData(prev => ({ ...prev, kontenjan: prev.kontenjan - count }));
+      setShowResModal(false);
+      alert(`Rezervasyon başarılı! ${katilimciSayisi} kişi için yeriniz ayrıldı.`);
+      setEventData((prev: any) => ({ ...prev, kontenjan: prev.kontenjan - katilimciSayisi }));
     } catch (err) {
       console.error(err);
       alert('İşlem başarısız oldu.');
@@ -136,49 +149,30 @@ const EventDetail: React.FC = () => {
     setVotingId(reviewId);
     try {
       const res = await axios.put(`http://localhost:5000/api/yorumlar/${reviewId}/vote`);
-      setReviews(prev => prev.map(r => r.id === reviewId
-        ? { ...r, faydali_oy_sayisi: res.data.faydali_oy_sayisi }
-        : r
-      ));
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setVotingId(null);
-    }
+      setReviews(prev => prev.map(r => r.id === reviewId ? { ...r, faydali_oy_sayisi: res.data.faydali_oy_sayisi } : r));
+    } catch (e) { console.error(e); }
+    finally { setVotingId(null); }
   };
 
-  const formatDate = (dateString: string) => {
-    const options: Intl.DateTimeFormatOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString('tr-TR', options);
-  };
+  const sortedReviews = [...reviews].sort((a, b) => {
+    if (sortBy === 'puan') return b.puan - a.puan;
+    if (sortBy === 'faydali') return b.faydali_oy_sayisi - a.faydali_oy_sayisi;
+    return new Date(b.tarih).getTime() - new Date(a.tarih).getTime();
+  });
 
-  const formatTime = (dateString: string) => {
-    return new Date(dateString).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-  };
+  const formatDate = (d: string) => new Date(d).toLocaleDateString('tr-TR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  const formatTime = (d: string) => new Date(d).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+  const avgRating = reviews.length > 0 ? (reviews.reduce((s, r) => s + r.puan, 0) / reviews.length).toFixed(1) : null;
 
-  const avgRating = reviews.length > 0
-    ? (reviews.reduce((s, r) => s + r.puan, 0) / reviews.length).toFixed(1)
-    : null;
-
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
-    </div>
-  );
-
-  if (!eventData) return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <p>Etkinlik bulunamadı.</p>
-    </div>
-  );
+  if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div></div>;
+  if (!eventData) return <div className="min-h-screen flex items-center justify-center bg-slate-50"><p>Etkinlik bulunamadı.</p></div>;
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans pb-20">
       <nav className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center">
           <button onClick={() => navigate('/etkinlikler')} className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 transition-colors font-medium">
-            <ArrowLeft size={20} />
-            Etkinliklere Dön
+            <ArrowLeft size={20} /> Etkinliklere Dön
           </button>
         </div>
       </nav>
@@ -200,10 +194,7 @@ const EventDetail: React.FC = () => {
                 {eventData.tur === 'Atölye' ? '🎨 Sanat Atölyesi' : '🏛️ Sergi'}
               </span>
             </div>
-
-            <h1 className="text-4xl font-black text-slate-800 tracking-tight leading-tight mt-4 mb-2">
-              {eventData.baslik}
-            </h1>
+            <h1 className="text-4xl font-black text-slate-800 tracking-tight leading-tight mt-4 mb-2">{eventData.baslik}</h1>
 
             {avgRating && (
               <div className="flex items-center gap-2 mb-6">
@@ -214,7 +205,7 @@ const EventDetail: React.FC = () => {
             )}
 
             <p className="text-slate-600 text-lg leading-relaxed mb-8 flex-1">
-              {eventData.aciklama || 'Bu etkinlik için henüz detaylı bir açıklama eklenmemiştir. Ancak sanat dolu harika bir deneyim olacağından emin olabilirsiniz!'}
+              {eventData.aciklama || 'Bu etkinlik için henüz detaylı bir açıklama eklenmemiştir.'}
             </p>
 
             <div className="grid grid-cols-2 gap-4 mb-8">
@@ -231,25 +222,27 @@ const EventDetail: React.FC = () => {
             </div>
 
             <button
-              onClick={handleReservation}
-              disabled={reserving || eventData.kontenjan <= 0}
+              onClick={() => setShowResModal(true)}
+              disabled={eventData.kontenjan <= 0}
               className="w-full flex items-center justify-center gap-2 bg-indigo-600 text-white font-bold text-lg py-4 rounded-xl hover:bg-indigo-700 transition-colors shadow-xl shadow-indigo-200 disabled:opacity-50"
             >
-              <Ticket size={24} />
-              {reserving ? 'İşleniyor...' : (eventData.kontenjan > 0 ? 'Hemen Rezervasyon Yap' : 'Kontenjan Dolu')}
+              <Ticket size={24} /> {eventData.kontenjan > 0 ? 'Rezervasyon Yap' : 'Kontenjan Dolu'}
             </button>
           </div>
         </div>
 
-        {/* ── YORUMLAR BÖLÜMÜ ── */}
+        {/* ── YORUMLAR ── */}
         <div className="space-y-6">
-          {/* Yorum Yaz Formu */}
           {user.id ? (
             <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-6">
               <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-                <MessageSquare className="text-indigo-500" size={22} />
-                Etkinliği Değerlendir
+                <MessageSquare className="text-indigo-500" size={22} /> Etkinliği Değerlendir
               </h2>
+              {/* Katılım zorunluluğu uyarısı */}
+              <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl mb-4 text-sm text-amber-700">
+                <CheckCircle size={16} className="text-amber-500 mt-0.5 shrink-0" />
+                <span><strong>Not:</strong> Etkinliğe yorum yapabilmek için önce rezervasyon yapmış olmanız gerekmektedir. Rezervasyon yapmadan gönderilen yorumlar reddedilir.</span>
+              </div>
               <form onSubmit={handleSubmitReview} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-600 mb-2">Puanınız</label>
@@ -257,47 +250,45 @@ const EventDetail: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-600 mb-2">Yorumunuz</label>
-                  <textarea
-                    rows={3} required value={reviewForm.metin}
-                    onChange={e => setReviewForm(f => ({ ...f, metin: e.target.value }))}
-                    placeholder="Bu etkinlikle ilgili deneyimlerinizi paylaşın..."
-                    className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm resize-none"
-                  />
+                  <textarea rows={3} required value={reviewForm.metin} onChange={e => setReviewForm(f => ({ ...f, metin: e.target.value }))} placeholder="Bu etkinlikle ilgili deneyimlerinizi paylaşın..." className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm resize-none" />
                 </div>
-                {submitError && <p className="text-sm text-rose-500">{submitError}</p>}
-                {submitSuccess && (
-                  <p className="text-sm text-emerald-600 flex items-center gap-1">
-                    <CheckCircle size={16} /> Yorumunuz başarıyla eklendi!
-                  </p>
+                {submitError && (
+                  <div className="flex items-start gap-3 p-4 bg-rose-50 border border-rose-200 rounded-xl text-sm text-rose-700 font-medium">
+                    <XCircle size={16} className="text-rose-500 mt-0.5 shrink-0" />
+                    <span>{submitError}</span>
+                  </div>
                 )}
+                {submitSuccess && <p className="text-sm text-emerald-600 flex items-center gap-1"><CheckCircle size={16} /> Yorumunuz başarıyla eklendi!</p>}
                 <div className="flex justify-end">
-                  <button
-                    type="submit" disabled={submitting}
-                    className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-all shadow-md shadow-indigo-300 disabled:opacity-60"
-                  >
-                    <Send size={16} />
-                    {submitting ? 'Gönderiliyor...' : 'Yorum Gönder'}
+                  <button type="submit" disabled={submitting} className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white font-semibold rounded-xl hover:bg-indigo-700 transition-all shadow-md shadow-indigo-300 disabled:opacity-60">
+                    <Send size={16} /> {submitting ? 'Gönderiliyor...' : 'Yorum Gönder'}
                   </button>
                 </div>
               </form>
             </div>
           ) : (
             <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5 text-center">
-              <p className="text-slate-600 text-sm">
-                Yorum yapmak için{' '}
-                <button onClick={() => navigate('/login')} className="text-indigo-600 font-semibold hover:underline">
-                  giriş yapın
-                </button>
-              </p>
+              <p className="text-slate-600 text-sm">Yorum yapmak için <button onClick={() => navigate('/login')} className="text-indigo-600 font-semibold hover:underline">giriş yapın</button></p>
             </div>
           )}
 
-          {/* Yorumlar Listesi */}
           <div>
-            <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-              <Star className="text-amber-400 fill-amber-400" size={22} />
-              Yorumlar {reviews.length > 0 && <span className="text-sm font-normal text-slate-400">({reviews.length})</span>}
-            </h2>
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <Star className="text-amber-400 fill-amber-400" size={22} /> Yorumlar
+                {reviews.length > 0 && <span className="text-sm font-normal text-slate-400">({reviews.length})</span>}
+              </h2>
+              {reviews.length > 1 && (
+                <div className="relative">
+                  <select value={sortBy} onChange={e => setSortBy(e.target.value as SortOption)} className="appearance-none pl-4 pr-10 py-2 border border-slate-200 rounded-xl text-sm font-medium text-slate-600 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+                    <option value="yeni">En Yeni</option>
+                    <option value="puan">En Yüksek Puan</option>
+                    <option value="faydali">En Faydalı</option>
+                  </select>
+                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                </div>
+              )}
+            </div>
 
             {reviews.length === 0 ? (
               <div className="bg-white rounded-2xl border border-slate-100 p-10 text-center text-slate-400">
@@ -306,7 +297,7 @@ const EventDetail: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                {reviews.map(review => (
+                {sortedReviews.map(review => (
                   <div key={review.id} className="bg-white rounded-2xl border border-slate-100 p-6 hover:shadow-md transition-shadow">
                     <div className="flex items-start gap-4">
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shrink-0">
@@ -320,29 +311,18 @@ const EventDetail: React.FC = () => {
                               <CheckCircle size={10} /> Doğrulanmış Katılımcı
                             </span>
                           )}
-                          <span className="text-xs text-slate-400 ml-auto">
-                            {new Date(review.tarih).toLocaleDateString('tr-TR')}
-                          </span>
+                          <span className="text-xs text-slate-400 ml-auto">{new Date(review.tarih).toLocaleDateString('tr-TR')}</span>
                         </div>
                         <StarRating value={review.puan} readonly />
                         <p className="text-slate-700 text-sm leading-relaxed mt-2">{review.metin}</p>
-
                         {review.admin_yaniti && (
                           <div className="mt-3 pl-4 border-l-2 border-indigo-200 bg-indigo-50/60 rounded-r-xl p-3">
-                            <p className="text-xs font-semibold text-indigo-500 mb-1 flex items-center gap-1">
-                              <CheckCircle size={11} /> Organizatör Yanıtı
-                            </p>
+                            <p className="text-xs font-semibold text-indigo-500 mb-1 flex items-center gap-1"><CheckCircle size={11} /> Organizatör Yanıtı</p>
                             <p className="text-sm text-slate-700">{review.admin_yaniti}</p>
                           </div>
                         )}
-
-                        <button
-                          onClick={() => handleVote(review.id)}
-                          disabled={votingId === review.id}
-                          className="mt-3 flex items-center gap-1.5 text-xs text-slate-400 hover:text-indigo-500 transition-colors disabled:opacity-50"
-                        >
-                          <ThumbsUp size={13} />
-                          Faydalı ({review.faydali_oy_sayisi})
+                        <button onClick={() => handleVote(review.id)} disabled={votingId === review.id} className="mt-3 flex items-center gap-1.5 text-xs text-slate-400 hover:text-indigo-500 transition-colors disabled:opacity-50">
+                          <ThumbsUp size={13} /> Faydalı ({review.faydali_oy_sayisi})
                         </button>
                       </div>
                     </div>
@@ -353,6 +333,73 @@ const EventDetail: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* ── Rezervasyon Modalı ── */}
+      {showResModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md relative">
+            <button onClick={() => { setShowResModal(false); setKuponData(null); setKuponKod(''); setKuponMsg(''); }} className="absolute top-5 right-5 p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"><X size={20} /></button>
+
+            <h2 className="text-2xl font-black text-slate-800 mb-1">Rezervasyon Yap</h2>
+            <p className="text-slate-500 text-sm mb-6">{eventData.baslik}</p>
+
+            {/* Katılımcı sayısı */}
+            <div className="mb-5">
+              <label className="block text-sm font-semibold text-slate-700 mb-2">Katılımcı Sayısı</label>
+              <div className="flex items-center gap-3">
+                <button type="button" onClick={() => setKatilimciSayisi(Math.max(1, katilimciSayisi - 1))} className="w-10 h-10 rounded-xl border-2 border-slate-200 font-bold text-slate-600 hover:border-indigo-400 transition-colors">-</button>
+                <span className="text-2xl font-black text-slate-800 w-12 text-center">{katilimciSayisi}</span>
+                <button type="button" onClick={() => setKatilimciSayisi(Math.min(eventData.kontenjan, katilimciSayisi + 1))} className="w-10 h-10 rounded-xl border-2 border-slate-200 font-bold text-slate-600 hover:border-indigo-400 transition-colors">+</button>
+                <span className="text-sm text-slate-400">/ Maks. {eventData.kontenjan}</span>
+              </div>
+            </div>
+
+            {/* Ödeme yöntemi */}
+            <div className="mb-5">
+              <label className="block text-sm font-semibold text-slate-700 mb-2">Ödeme Yöntemi</label>
+              <div className="grid grid-cols-3 gap-2">
+                {['Online Kredi Kartı', 'Havale/EFT', 'Kapıda Ödeme'].map(y => (
+                  <button key={y} type="button" onClick={() => setOdemeYontemi(y)} className={`py-2.5 px-2 rounded-xl border-2 text-xs font-semibold transition-all ${odemeYontemi === y ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}>{y}</button>
+                ))}
+              </div>
+            </div>
+
+            {/* Kupon */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-slate-700 mb-2">İndirim Kuponu</label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Tag size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input type="text" value={kuponKod} onChange={e => { setKuponKod(e.target.value.toUpperCase()); setKuponData(null); setKuponMsg(''); }} placeholder="KUPON KODU" className="w-full pl-9 pr-3 py-2.5 border border-slate-200 rounded-xl text-sm font-mono uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                </div>
+                <button type="button" onClick={handleKuponUygula} disabled={kuponLoading || !kuponKod.trim()} className="px-4 py-2.5 bg-slate-800 text-white text-sm font-bold rounded-xl hover:bg-slate-700 transition-colors disabled:opacity-50">{kuponLoading ? '...' : 'Uygula'}</button>
+              </div>
+              {kuponMsg && <p className={`text-xs font-medium mt-1.5 ${kuponMsg.startsWith('✅') ? 'text-emerald-600' : 'text-rose-500'}`}>{kuponMsg}</p>}
+            </div>
+
+            {/* Fiyat özeti */}
+            <div className="bg-slate-50 rounded-2xl p-5 mb-6 border border-slate-100 space-y-2">
+              <div className="flex justify-between text-sm text-slate-600"><span>Birim Fiyat</span><span>₺{birimFiyat}</span></div>
+              <div className="flex justify-between text-sm text-slate-600"><span>Katılımcı</span><span>× {katilimciSayisi}</span></div>
+              <div className="flex justify-between text-sm text-slate-600"><span>Ara Toplam</span><span>₺{araToplam.toFixed(2)}</span></div>
+              {kuponData && (
+                <div className="flex justify-between text-sm text-emerald-600 font-semibold">
+                  <span>İndirim (%{kuponData.indirim_yuzdesi})</span>
+                  <span>-₺{indirimTutar.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex justify-between text-lg font-black text-slate-800 pt-2 border-t border-slate-200">
+                <span>Toplam</span>
+                <span className="text-indigo-600">₺{finalToplam}</span>
+              </div>
+            </div>
+
+            <button onClick={handleReservation} disabled={reserving} className="w-full py-4 bg-indigo-600 text-white font-black text-lg rounded-xl hover:bg-indigo-700 transition-colors shadow-xl shadow-indigo-200 disabled:opacity-60">
+              {reserving ? 'İşleniyor...' : `₺${finalToplam} Öde ve Rezervasyon Yap`}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

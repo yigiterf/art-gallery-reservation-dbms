@@ -40,20 +40,31 @@ exports.getEtkinlikYorumlari = async (req, res) => {
 exports.addYorum = async (req, res) => {
   const { kullanici_id, eser_id, etkinlik_id, puan, metin } = req.body;
   try {
-    // Doğrulanmış satın alma / rezervasyon kontrolü
     let dogrulanmis = false;
+
     if (eser_id) {
+      // Eser yorumu: satın almış olmak sadece rozet verir, zorunlu değil
       const check = await pool.query(
-        'SELECT id FROM islemler WHERE kullanici_id = $1 AND eser_id = $2',
+        "SELECT id FROM islemler WHERE kullanici_id = $1 AND eser_id = $2 AND durum != 'İptal Edildi'",
         [kullanici_id, eser_id]
       );
       dogrulanmis = check.rows.length > 0;
+
     } else if (etkinlik_id) {
+      // Etkinlik yorumu: katılım ZORUNLU — katılmadan yorum yapılamaz
       const check = await pool.query(
-        'SELECT id FROM islemler WHERE kullanici_id = $1 AND etkinlik_id = $2',
+        "SELECT id FROM islemler WHERE kullanici_id = $1 AND etkinlik_id = $2 AND durum != 'İptal Edildi'",
         [kullanici_id, etkinlik_id]
       );
-      dogrulanmis = check.rows.length > 0;
+
+      if (check.rows.length === 0) {
+        return res.status(403).json({
+          error: 'Bu etkinliğe yorum yapabilmek için etkinliğe rezervasyon yapmış ve katılmış olmanız gerekmektedir.'
+        });
+      }
+      dogrulanmis = true; // Etkinliğe katılan herkes doğrulanmış sayılır
+    } else {
+      return res.status(400).json({ error: 'Eser veya etkinlik belirtilmesi zorunludur.' });
     }
 
     const result = await pool.query(

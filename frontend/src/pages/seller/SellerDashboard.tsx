@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
-import { LogOut, ImagePlus, UserCircle, Send, LayoutDashboard, UploadCloud, CalendarPlus, BarChart3, HelpCircle, AlertCircle } from 'lucide-react';
+import { LogOut, ImagePlus, UserCircle, Send, LayoutDashboard, UploadCloud, CalendarPlus, BarChart3, HelpCircle, AlertCircle, Home } from 'lucide-react';
 
 const SellerDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -171,6 +171,9 @@ const SellerDashboard: React.FC = () => {
               <span className="text-sm font-semibold truncate w-[140px]">{user.ad_soyad}</span>
             </div>
           </div>
+          <Link to="/home" className="flex items-center gap-3 w-full p-3 mb-2 rounded-xl text-emerald-400 hover:bg-emerald-500/10 font-medium transition-colors">
+            <Home size={20} /> Ana Sayfaya Dön
+          </Link>
           <button onClick={handleLogout} className="flex items-center gap-3 w-full p-3 rounded-xl text-rose-400 hover:bg-rose-500/10 font-medium transition-colors">
             <LogOut size={20} /> Çıkış Yap
           </button>
