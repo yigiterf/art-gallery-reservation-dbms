@@ -34,7 +34,7 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Navigate to="/home" replace />} />
+        <Route path="/" element={<HomePage />} />
         
         {/* Auth Routes */}
         <Route path="/login" element={<Login />} />

@@ -14,4 +14,7 @@ router.post('/', yorumController.addYorum);
 // PUT /api/yorumlar/:id/vote         → Faydalı bul
 router.put('/:id/vote', yorumController.voteYorum);
 
+// PUT /api/yorumlar/:id/sahip-yaniti → Sahip/organizatör yanıtı ekle
+router.put('/:id/sahip-yaniti', yorumController.addSahipYaniti);
+
 module.exports = router;

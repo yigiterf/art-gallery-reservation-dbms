@@ -26,3 +26,21 @@ exports.getSanatciProfil = async (req, res) => {
         res.status(500).json({ message: 'Sanatçı profili alınamadı.' });
     }
 };
+
+exports.updateSanatci = async (req, res) => {
+    const { id } = req.params;
+    const { ad, biyografi } = req.body;
+    try {
+        const updateRes = await pool.query(
+            'UPDATE sanatcilar SET ad = $1, biyografi = $2 WHERE id = $3 RETURNING *',
+            [ad, biyografi, id]
+        );
+        if (updateRes.rows.length === 0) {
+            return res.status(404).json({ message: 'Sanatçı bulunamadı.' });
+        }
+        res.json(updateRes.rows[0]);
+    } catch (error) {
+        console.error('Sanatçı güncelleme hatası:', error);
+        res.status(500).json({ message: 'Sanatçı profili güncellenemedi.' });
+    }
+};

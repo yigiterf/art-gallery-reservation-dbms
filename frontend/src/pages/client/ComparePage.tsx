@@ -25,6 +25,8 @@ const ComparePage: React.FC = () => {
   // ── Kaydedilen karşılaştırmalar ──
   const [savedComparisons, setSavedComparisons] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
+  const [expandedCompId, setExpandedCompId] = useState<number | null>(null);
+  const [expandedItems, setExpandedItems] = useState<any[]>([]);
 
   // ── Karşılaştırma modalı ──
   const [showModal, setShowModal] = useState(false);
@@ -89,6 +91,15 @@ const ComparePage: React.FC = () => {
   };
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+  const loadCompDetail = async (comp: any) => {
+    if (expandedCompId === comp.id) { setExpandedCompId(null); setExpandedItems([]); return; }
+    const ids: number[] = Array.isArray(comp.oge_idler) ? comp.oge_idler : JSON.parse(comp.oge_idler);
+    const pool = comp.tip === 'eser' ? artworks : events;
+    const items = pool.filter((x: any) => ids.includes(x.id));
+    setExpandedItems(items);
+    setExpandedCompId(comp.id);
+  };
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -227,24 +238,76 @@ const ComparePage: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-3">
-                {savedComparisons.map(comp => (
-                  <div key={comp.id} className="bg-white rounded-2xl border border-slate-100 p-4 flex items-center justify-between gap-4">
-                    <div>
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${comp.tip === 'eser' ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-600'}`}>
-                        {comp.tip === 'eser' ? '🎨 Eser' : '📅 Etkinlik'}
-                      </span>
-                      <p className="text-sm text-slate-600 mt-1.5">
-                        {(Array.isArray(comp.oge_idler) ? comp.oge_idler : JSON.parse(comp.oge_idler)).length} öğe karşılaştırması
-                      </p>
+                {savedComparisons.map(comp => {
+                  const ids: number[] = Array.isArray(comp.oge_idler) ? comp.oge_idler : JSON.parse(comp.oge_idler);
+                  const isExpanded = expandedCompId === comp.id;
+                  return (
+                    <div key={comp.id} className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+                      <div className="p-4 flex items-center justify-between gap-4">
+                        <div>
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${comp.tip === 'eser' ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-600'}`}>
+                            {comp.tip === 'eser' ? '🎨 Eser' : '📅 Etkinlik'}
+                          </span>
+                          <p className="text-sm text-slate-600 mt-1">{ids.length} öğe karşılaştırması</p>
+                        </div>
+                        <div className="flex gap-2 shrink-0">
+                          <button
+                            onClick={() => loadCompDetail(comp)}
+                            className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all ${isExpanded ? 'bg-indigo-600 text-white' : 'border border-indigo-200 text-indigo-600 hover:bg-indigo-50'}`}
+                          >
+                            {isExpanded ? 'Kapat' : 'Detayları Gör'}
+                          </button>
+                          <button
+                            onClick={() => handleDeleteSaved(comp.id)}
+                            className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </div>
+                      {/* Expanded detail */}
+                      {isExpanded && expandedItems.length > 0 && (
+                        <div className="border-t border-slate-100 p-4 overflow-x-auto bg-slate-50">
+                          <table className="w-full border-collapse text-sm">
+                            <thead>
+                              <tr>
+                                <th className="text-left py-2 px-3 text-xs font-bold text-slate-500 uppercase"></th>
+                                {expandedItems.map((item: any) => (
+                                  <th key={item.id} className="text-center py-2 px-3">
+                                    <div className="flex flex-col items-center gap-1">
+                                      {comp.tip === 'eser' && item.gorsel_url
+                                        ? <img src={item.gorsel_url} alt={item.baslik} className="w-14 h-14 rounded-lg object-cover" />
+                                        : <div className="w-14 h-14 bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-400 text-xs font-bold">{comp.tip === 'eser' ? '🎨' : '📅'}</div>
+                                      }
+                                      <span className="font-bold text-slate-800 text-xs">{item.baslik}</span>
+                                    </div>
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {comp.tip === 'eser' ? (
+                                <>
+                                  <tr><td className="py-2 px-3 text-slate-500 font-semibold">Sanatçı</td>{expandedItems.map((i: any) => <td key={i.id} className="py-2 px-3 text-center">{i.sanatci_adi || '—'}</td>)}</tr>
+                                  <tr><td className="py-2 px-3 text-slate-500 font-semibold">Fiyat</td>{expandedItems.map((i: any) => <td key={i.id} className="py-2 px-3 text-center font-black text-indigo-600">₺{i.fiyat}</td>)}</tr>
+                                  <tr><td className="py-2 px-3 text-slate-500 font-semibold">Stok</td>{expandedItems.map((i: any) => <td key={i.id} className="py-2 px-3 text-center">{i.stok}</td>)}</tr>
+                                  <tr><td className="py-2 px-3 text-slate-500 font-semibold">Detay</td>{expandedItems.map((i: any) => <td key={i.id} className="py-2 px-3 text-center"><Link to={`/eser/${i.id}`} className="text-xs bg-indigo-600 text-white px-3 py-1 rounded-lg hover:bg-indigo-700">İncele</Link></td>)}</tr>
+                                </>
+                              ) : (
+                                <>
+                                  <tr><td className="py-2 px-3 text-slate-500 font-semibold">Tarih</td>{expandedItems.map((i: any) => <td key={i.id} className="py-2 px-3 text-center text-xs">{formatDate(i.tarih_saat)}</td>)}</tr>
+                                  <tr><td className="py-2 px-3 text-slate-500 font-semibold">Ücret</td>{expandedItems.map((i: any) => <td key={i.id} className="py-2 px-3 text-center font-black text-indigo-600">₺{i.ucret}</td>)}</tr>
+                                  <tr><td className="py-2 px-3 text-slate-500 font-semibold">Kontenjan</td>{expandedItems.map((i: any) => <td key={i.id} className="py-2 px-3 text-center">{i.kontenjan} kişi</td>)}</tr>
+                                  <tr><td className="py-2 px-3 text-slate-500 font-semibold">Rezervasyon</td>{expandedItems.map((i: any) => <td key={i.id} className="py-2 px-3 text-center"><Link to={`/etkinlik/${i.id}`} className="text-xs bg-indigo-600 text-white px-3 py-1 rounded-lg hover:bg-indigo-700">Rezervasyon</Link></td>)}</tr>
+                                </>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
                     </div>
-                    <button
-                      onClick={() => handleDeleteSaved(comp.id)}
-                      className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -270,7 +333,7 @@ const ComparePage: React.FC = () => {
                 <table className="w-full border-collapse">
                   <thead>
                     <tr>
-                      <th className="text-left py-3 px-4 text-sm font-bold text-slate-500 uppercase tracking-wider w-32">Özellik</th>
+                      <th className="text-left py-3 px-4 text-sm font-bold text-slate-500 uppercase tracking-wider w-32"></th>
                       {selectedItems.map(art => (
                         <th key={art.id} className="text-center py-3 px-4">
                           <div className="flex flex-col items-center gap-2">
@@ -314,7 +377,7 @@ const ComparePage: React.FC = () => {
                 <table className="w-full border-collapse">
                   <thead>
                     <tr>
-                      <th className="text-left py-3 px-4 text-sm font-bold text-slate-500 uppercase tracking-wider w-32">Özellik</th>
+                      <th className="text-left py-3 px-4 text-sm font-bold text-slate-500 uppercase tracking-wider w-32"></th>
                       {selectedItems.map(evt => (
                         <th key={evt.id} className="text-center py-3 px-4">
                           <div className="flex flex-col items-center gap-2">

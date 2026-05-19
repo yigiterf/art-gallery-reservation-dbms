@@ -171,17 +171,92 @@ exports.updateIslem = async (req, res) => {
   }
 };
 
-// Kupon doğrula
+// Kupon doğrula (yaş/cinsiyet kısıtlamaları dahil)
 exports.validateKupon = async (req, res) => {
   const { kod } = req.params;
+  const { kullanici_id } = req.query; // opsiyonel, kısıtlama kontrolü için
   try {
     const result = await pool.query('SELECT * FROM kuponlar WHERE kod = $1', [kod.toUpperCase()]);
     if (result.rows.length === 0) {
       return res.status(404).json({ message: 'Geçersiz kupon kodu.' });
     }
-    res.json({ indirim_yuzdesi: result.rows[0].indirim_yuzdesi, id: result.rows[0].id });
+    const kupon = result.rows[0];
+
+    // Kullanıcı ID varsa yaş/cinsiyet kısıtlamasını kontrol et
+    if (kullanici_id) {
+      const userRes = await pool.query('SELECT yas, cinsiyet FROM kullanicilar WHERE id = $1', [kullanici_id]);
+      if (userRes.rows.length > 0) {
+        const user = userRes.rows[0];
+
+        // Yaş kısıtlaması
+        if (kupon.min_yas !== null && user.yas !== null && user.yas < kupon.min_yas) {
+          return res.status(403).json({ message: `Bu kupon ${kupon.min_yas} yaş ve üzeri kullanıcılara özeldir.` });
+        }
+        if (kupon.max_yas !== null && user.yas !== null && user.yas > kupon.max_yas) {
+          return res.status(403).json({ message: `Bu kupon ${kupon.max_yas} yaş ve altı kullanıcılara özeldir.` });
+        }
+
+        // Cinsiyet kısıtlaması
+        if (kupon.cinsiyet_kisitlamasi && kupon.cinsiyet_kisitlamasi !== 'Tumu') {
+          if (user.cinsiyet && user.cinsiyet !== kupon.cinsiyet_kisitlamasi) {
+            return res.status(403).json({ message: `Bu kupon yalnızca ${kupon.cinsiyet_kisitlamasi} kullanıcılara özeldir.` });
+          }
+        }
+      }
+    }
+
+    res.json({
+      indirim_yuzdesi: kupon.indirim_yuzdesi,
+      id: kupon.id,
+      kod: kupon.kod,
+      aciklama: kupon.aciklama,
+      min_yas: kupon.min_yas,
+      max_yas: kupon.max_yas,
+      cinsiyet_kisitlamasi: kupon.cinsiyet_kisitlamasi,
+    });
   } catch (error) {
     res.status(500).json({ message: 'Kupon doğrulanamadı.' });
+  }
+};
+
+// Satıcı kuponu oluştur
+exports.createKupon = async (req, res) => {
+  const { kod, indirim_yuzdesi, sanatci_id, min_yas, max_yas, cinsiyet_kisitlamasi, hedef_turu, aciklama } = req.body;
+  try {
+    const result = await pool.query(
+      `INSERT INTO kuponlar (kod, indirim_yuzdesi, sanatci_id, min_yas, max_yas, cinsiyet_kisitlamasi, hedef_turu, aciklama)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [kod.toUpperCase(), indirim_yuzdesi, sanatci_id || null, min_yas || null, max_yas || null,
+       cinsiyet_kisitlamasi || null, hedef_turu || 'tum', aciklama || null]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    if (error.code === '23505') {
+      return res.status(409).json({ message: 'Bu kupon kodu zaten kullanılıyor.' });
+    }
+    res.status(500).json({ message: 'Kupon oluşturulamadı.' });
+  }
+};
+
+// Satıcıya ait kuponları getir
+exports.getKuponlarBySatici = async (req, res) => {
+  const { sanatciId } = req.params;
+  try {
+    const result = await pool.query('SELECT * FROM kuponlar WHERE sanatci_id = $1 ORDER BY id DESC', [sanatciId]);
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ message: 'Kuponlar alınamadı.' });
+  }
+};
+
+// Kupon sil
+exports.deleteKupon = async (req, res) => {
+  const { id } = req.params;
+  try {
+    await pool.query('DELETE FROM kuponlar WHERE id = $1', [id]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ message: 'Kupon silinemedi.' });
   }
 };
 

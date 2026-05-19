@@ -97,6 +97,18 @@ const initDb = async () => {
       ALTER TABLE kullanicilar ADD COLUMN IF NOT EXISTS yas INTEGER;
       ALTER TABLE kullanicilar ADD COLUMN IF NOT EXISTS cinsiyet VARCHAR(20);
       ALTER TABLE etkinlikler ADD COLUMN IF NOT EXISTS sanatci_id INTEGER REFERENCES sanatcilar(id) ON DELETE CASCADE;
+
+      -- Kupon kısıtlamaları (yaş, cinsiyet, satıcı bazlı)
+      ALTER TABLE kuponlar ADD COLUMN IF NOT EXISTS min_yas INTEGER;
+      ALTER TABLE kuponlar ADD COLUMN IF NOT EXISTS max_yas INTEGER;
+      ALTER TABLE kuponlar ADD COLUMN IF NOT EXISTS cinsiyet_kisitlamasi VARCHAR(20);
+      ALTER TABLE kuponlar ADD COLUMN IF NOT EXISTS sanatci_id INTEGER REFERENCES sanatcilar(id) ON DELETE CASCADE;
+      ALTER TABLE kuponlar ADD COLUMN IF NOT EXISTS hedef_turu VARCHAR(20) DEFAULT 'tum';
+      ALTER TABLE kuponlar ADD COLUMN IF NOT EXISTS aciklama TEXT;
+
+      -- Yorum sahibi yanıtı
+      ALTER TABLE yorumlar ADD COLUMN IF NOT EXISTS sahip_yaniti TEXT;
+      ALTER TABLE yorumlar ADD COLUMN IF NOT EXISTS sahip_yaniti_tarihi TIMESTAMP;
     `);
     
     console.log('Veritabanı tabloları başarıyla ayarlandı.');

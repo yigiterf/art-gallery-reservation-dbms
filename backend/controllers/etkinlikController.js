@@ -4,7 +4,11 @@ const pool = require('../db');
 exports.getAllEtkinlikler = async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT e.*, s.ad AS sanatci_adi 
+      SELECT e.*, s.ad AS sanatci_adi,
+      EXISTS (
+        SELECT 1 FROM kuponlar k 
+        WHERE k.sanatci_id = e.sanatci_id AND k.hedef_turu IN ('tum', 'etkinlik')
+      ) as has_kupon
       FROM etkinlikler e 
       LEFT JOIN sanatcilar s ON e.sanatci_id = s.id 
       ORDER BY e.tarih_saat ASC

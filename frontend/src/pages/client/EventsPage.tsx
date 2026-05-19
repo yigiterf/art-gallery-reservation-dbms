@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
-import { Calendar, Clock, Users, Ticket, Heart, Search, Filter, LogOut, X, Tag, ChevronDown } from 'lucide-react';
+import { Calendar, Clock, Users, Ticket, Heart, Search, Filter, LogOut, X, Tag, ChevronDown, LogIn, UserPlus } from 'lucide-react';
 
 type SortOrder = 'asc' | 'desc';
 
@@ -10,8 +10,10 @@ const EventsPage: React.FC = () => {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterKuponlu, setFilterKuponlu] = useState(false);
   const [dateSortOrder, setDateSortOrder] = useState<SortOrder>('asc');
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const user = JSON.parse(localStorage.getItem('user') || 'null') || {};
+  const isLoggedIn = !!user.id;
 
   // ── Rezervasyon Modalı State ──
   const [modalEvent, setModalEvent] = useState<any | null>(null);
@@ -25,12 +27,12 @@ const EventsPage: React.FC = () => {
   const [reserving, setReserving] = useState(false);
 
   useEffect(() => {
-    if (!user.id) { navigate('/login'); return; }
+    // Etkinlikler herkes tarafından görülebilir
     axios.get('http://localhost:5000/api/etkinlikler')
       .then(res => setEvents(res.data))
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [navigate]);
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -48,6 +50,10 @@ const EventsPage: React.FC = () => {
 
   // ── Modal Aç ──
   const openModal = (event: any) => {
+    if (!isLoggedIn) {
+      navigate('/login');
+      return;
+    }
     setModalEvent(event);
     setKatilimci(1);
     setOdemeYontemi('Online Kredi Kartı');
@@ -112,9 +118,11 @@ const EventsPage: React.FC = () => {
   };
 
   // ── Filtrelenmiş ve Gruplanmış Etkinlikler ──
-  const filteredEvents = Object.values(events.filter(e =>
-    e.baslik.toLocaleLowerCase('tr-TR').includes(searchQuery.toLocaleLowerCase('tr-TR'))
-  ).reduce((acc: any, event: any) => {
+  const filteredEvents = Object.values(events.filter(e => {
+    const matchSearch = e.baslik.toLocaleLowerCase('tr-TR').includes(searchQuery.toLocaleLowerCase('tr-TR'));
+    const matchKupon = !filterKuponlu || e.has_kupon;
+    return matchSearch && matchKupon;
+  }).reduce((acc: any, event: any) => {
     // Group by title
     if (!acc[event.baslik]) {
       acc[event.baslik] = { ...event, sessions: [event] };
@@ -139,14 +147,16 @@ const EventsPage: React.FC = () => {
       <nav className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
-            <Link to="/home" className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center font-bold text-xl shadow-lg shadow-indigo-200">A</div>
-              <span className="text-xl font-bold tracking-tight text-slate-800">ArtGallery</span>
-            </Link>
+            <div className="flex items-center gap-8">
+              <Link to="/home" className="flex items-center gap-2">
+                <div className="w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center font-bold text-xl shadow-lg shadow-indigo-200">A</div>
+                <span className="text-xl font-bold tracking-tight text-slate-800">ArtGallery</span>
+              </Link>
 
-            <div className="flex gap-6 hidden md:flex items-center font-medium text-slate-600">
-              <Link to="/home" className="hover:text-indigo-600 transition-colors">Eserler</Link>
-              <Link to="/etkinlikler" className="text-indigo-600 border-b-2 border-indigo-600 pb-1">Etkinlikler</Link>
+              <div className="flex gap-6 hidden md:flex items-center font-medium text-slate-600">
+                <Link to="/home" className="hover:text-indigo-600 transition-colors">Eserler</Link>
+                <Link to="/etkinlikler" className="text-indigo-600 border-b-2 border-indigo-600 pb-1">Etkinlikler</Link>
+              </div>
             </div>
 
             <div className="flex-1 max-w-sm mx-8 hidden lg:block">
@@ -162,19 +172,32 @@ const EventsPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
-              <Link to="/favorites" className="p-2 text-slate-500 hover:text-rose-500 transition-colors">
-                <Heart size={24} />
-              </Link>
-              {(user.rol === 'satici' || user.rol === 'admin') && (
-                <Link to={user.rol === 'satici' ? "/seller/dashboard" : "/admin"} className="p-2 text-slate-500 hover:text-indigo-600 transition-colors font-medium">
-                  {user.rol === 'satici' ? 'Satıcı Paneli' : 'Admin Paneli'}
-                </Link>
+            <div className="flex items-center gap-3">
+              {isLoggedIn ? (
+                <>
+                  <Link to="/favorites" className="p-2 text-slate-500 hover:text-rose-500 transition-colors">
+                    <Heart size={24} />
+                  </Link>
+                  {(user.rol === 'satici' || user.rol === 'admin') && (
+                    <Link to={user.rol === 'satici' ? "/seller/dashboard" : "/admin"} className="px-3 py-1.5 text-sm font-semibold text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+                      {user.rol === 'satici' ? 'Satıcı Paneli' : 'Admin Paneli'}
+                    </Link>
+                  )}
+                  <Link to="/profile" className="px-3 py-1.5 text-sm text-slate-600 hover:text-indigo-600 transition-colors font-medium">Profilim</Link>
+                  <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full font-medium transition-colors text-sm">
+                    <LogOut size={16} /> Çıkış
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link to="/login" className="flex items-center gap-2 px-4 py-2 text-slate-700 hover:text-indigo-600 font-semibold transition-colors text-sm">
+                    <LogIn size={16} /> Giriş Yap
+                  </Link>
+                  <Link to="/register" className="flex items-center gap-2 px-5 py-2 bg-indigo-600 text-white rounded-full font-semibold hover:bg-indigo-700 transition-colors shadow-md shadow-indigo-200 text-sm">
+                    <UserPlus size={16} /> Üye Ol
+                  </Link>
+                </>
               )}
-              <Link to="/profile" className="p-2 text-slate-500 hover:text-indigo-600 transition-colors font-medium">Profilim</Link>
-              <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full font-medium transition-colors">
-                <LogOut size={18} /> Çıkış
-              </button>
             </div>
           </div>
         </div>
@@ -191,7 +214,7 @@ const EventsPage: React.FC = () => {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-12">
-        <div className="flex justify-between items-end mb-8">
+        <div className="flex justify-between items-end mb-8 flex-wrap gap-4">
           <div>
             <h2 className="text-2xl font-bold text-slate-800">Yaklaşan Etkinlikler</h2>
             <p className="text-slate-500 mt-1">
@@ -199,11 +222,22 @@ const EventsPage: React.FC = () => {
               {searchQuery && ` — "${searchQuery}" araması`}
             </p>
           </div>
-          <button 
-            onClick={() => setDateSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:border-slate-300 shadow-sm">
-            <Filter size={16} /> Tarihe Göre ({dateSortOrder === 'asc' ? 'Yakın' : 'Uzak'})
-          </button>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 cursor-pointer bg-white px-3 py-2 rounded-lg border border-slate-200 shadow-sm text-sm font-medium text-slate-600 hover:border-indigo-300 transition-colors">
+              <input 
+                type="checkbox" 
+                checked={filterKuponlu} 
+                onChange={e => setFilterKuponlu(e.target.checked)}
+                className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 border-slate-300 cursor-pointer"
+              />
+              Kuponlu Etkinlikler
+            </label>
+            <button 
+              onClick={() => setDateSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-lg hover:border-slate-300 shadow-sm">
+              <Filter size={16} /> Tarihe Göre ({dateSortOrder === 'asc' ? 'Yakın' : 'Uzak'})
+            </button>
+          </div>
         </div>
 
         {loading ? (
@@ -220,11 +254,18 @@ const EventsPage: React.FC = () => {
                     <div className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg font-bold shrink-0">₺{event.ucret}</div>
                   </div>
                   
-                  {event.sessions && event.sessions.length > 1 && (
-                    <div className="mb-3 inline-block bg-purple-100 text-purple-700 text-xs font-bold px-2 py-1 rounded">
-                      Çoklu Oturum Mevcut ({event.sessions.length})
-                    </div>
-                  )}
+                  <div>
+                    {event.sessions && event.sessions.length > 1 && (
+                      <div className="mb-3 inline-block bg-purple-100 text-purple-700 text-xs font-bold px-2 py-1 rounded">
+                        Çoklu Oturum Mevcut ({event.sessions.length})
+                      </div>
+                    )}
+                    {event.has_kupon && (
+                      <div className={`mb-3 inline-block bg-amber-100 text-amber-800 text-xs font-bold px-2 py-1 rounded ${event.sessions && event.sessions.length > 1 ? 'ml-2' : ''}`}>
+                        🎟️ Kuponlu
+                      </div>
+                    )}
+                  </div>
                   
                   <div className="flex items-center gap-2 mb-4">
                     <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-500">

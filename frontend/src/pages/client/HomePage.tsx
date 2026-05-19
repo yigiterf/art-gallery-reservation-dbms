@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
-import { Heart, Search, LogOut, Brush, GitCompare, LifeBuoy, X, ChevronDown, SlidersHorizontal } from 'lucide-react';
+import { Heart, Search, LogOut, Brush, GitCompare, LifeBuoy, X, ChevronDown, SlidersHorizontal, UserPlus, LogIn } from 'lucide-react';
 
 const SORT_OPTIONS = [
   { value: 'yeni', label: 'En Yeni' },
@@ -16,32 +16,37 @@ const HomePage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
   const [togglingId, setTogglingId] = useState<number | null>(null);
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+  // Auth
+  const user = JSON.parse(localStorage.getItem('user') || 'null') || {};
+  const isLoggedIn = !!user.id;
 
   // ── Filter & Search State ──
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('yeni');
   const [priceMin, setPriceMin] = useState('');
   const [priceMax, setPriceMax] = useState('');
+  const [filterKuponlu, setFilterKuponlu] = useState(false);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
 
   useEffect(() => {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (!user.id) { navigate('/login'); return; }
-
+    // Herkes eserleri görebilir (login gerekmez)
     axios.get('http://localhost:5000/api/eserler')
       .then(res => setArtworks(res.data))
       .catch(console.error)
       .finally(() => setLoading(false));
 
-    axios.get(`http://localhost:5000/api/favoriler/kullanici/${user.id}/idler`)
-      .then(res => setFavoriteIds(new Set(res.data)))
-      .catch(console.error);
-  }, [navigate]);
+    // Favorileri sadece giriş yapmışlar için çek
+    if (isLoggedIn) {
+      axios.get(`http://localhost:5000/api/favoriler/kullanici/${user.id}/idler`)
+        .then(res => setFavoriteIds(new Set(res.data)))
+        .catch(console.error);
+    }
+  }, []);
 
   const toggleFavorite = async (e: React.MouseEvent, artId: number) => {
     e.preventDefault(); e.stopPropagation();
-    if (!user.id) return navigate('/login');
+    if (!isLoggedIn) return navigate('/login');
     setTogglingId(artId);
     try {
       if (favoriteIds.has(artId)) {
@@ -58,7 +63,7 @@ const HomePage: React.FC = () => {
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    navigate('/login');
+    navigate('/');
   };
 
   // ── Filtered + Sorted artworks ──
@@ -70,7 +75,8 @@ const HomePage: React.FC = () => {
         art.sanatci_adi?.toLocaleLowerCase('tr-TR').includes(q);
       const matchesMin = !priceMin || parseFloat(art.fiyat) >= parseFloat(priceMin);
       const matchesMax = !priceMax || parseFloat(art.fiyat) <= parseFloat(priceMax);
-      return matchesSearch && matchesMin && matchesMax;
+      const matchesKupon = !filterKuponlu || art.has_kupon;
+      return matchesSearch && matchesMin && matchesMax && matchesKupon;
     })
     .sort((a, b) => {
       if (sortBy === 'fiyat_asc') return parseFloat(a.fiyat) - parseFloat(b.fiyat);
@@ -79,12 +85,13 @@ const HomePage: React.FC = () => {
       return b.id - a.id; // yeni (default)
     });
 
-  const activeFiltersCount = [searchQuery, priceMin, priceMax, sortBy !== 'yeni'].filter(Boolean).length;
+  const activeFiltersCount = [searchQuery, priceMin, priceMax, filterKuponlu, sortBy !== 'yeni'].filter(Boolean).length;
 
   const clearFilters = () => {
     setSearchQuery('');
     setPriceMin('');
     setPriceMax('');
+    setFilterKuponlu(false);
     setSortBy('yeni');
   };
 
@@ -94,15 +101,19 @@ const HomePage: React.FC = () => {
       <nav className="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
-            <Link to="/home" className="flex items-center gap-2">
-              <div className="w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center font-bold text-xl shadow-lg shadow-indigo-200">A</div>
-              <span className="text-xl font-bold tracking-tight text-slate-800">ArtGallery</span>
-            </Link>
+            <div className="flex items-center gap-8">
+              <Link to="/" className="flex items-center gap-2">
+                <div className="w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center font-bold text-xl shadow-lg shadow-indigo-200">A</div>
+                <span className="text-xl font-bold tracking-tight text-slate-800">ArtGallery</span>
+              </Link>
 
-            <div className="hidden md:flex gap-6 items-center font-medium text-slate-600">
-              <Link to="/home" className="text-indigo-600 border-b-2 border-indigo-600 pb-1">Eserler</Link>
-              <Link to="/etkinlikler" className="hover:text-indigo-600 transition-colors">Etkinlikler</Link>
-              <Link to="/karsilastir" className="hover:text-indigo-600 transition-colors flex items-center gap-1"><GitCompare size={16} />Karşılaştır</Link>
+              <div className="hidden md:flex gap-6 items-center font-medium text-slate-600">
+                <Link to="/" className="text-indigo-600 border-b-2 border-indigo-600 pb-1">Eserler</Link>
+                <Link to="/etkinlikler" className="hover:text-indigo-600 transition-colors">Etkinlikler</Link>
+                {isLoggedIn && (
+                  <Link to="/karsilastir" className="hover:text-indigo-600 transition-colors flex items-center gap-1"><GitCompare size={16} />Karşılaştır</Link>
+                )}
+              </div>
             </div>
 
             {/* Search */}
@@ -124,27 +135,47 @@ const HomePage: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
-              <Link to="/favorites" className="p-2 text-slate-500 hover:text-rose-500 transition-colors relative">
-                <Heart size={24} className={favoriteIds.size > 0 ? 'fill-rose-400 text-rose-400' : ''} />
-                {favoriteIds.size > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
-                    {favoriteIds.size > 9 ? '9+' : favoriteIds.size}
-                  </span>
-                )}
-              </Link>
-              <Link to="/destek" className="p-2 text-slate-500 hover:text-indigo-600 transition-colors" title="Destek">
-                <LifeBuoy size={22} />
-              </Link>
-              {(user.rol === 'satici' || user.rol === 'admin') && (
-                <Link to={user.rol === 'satici' ? "/seller/dashboard" : "/admin"} className="p-2 text-slate-500 hover:text-indigo-600 transition-colors font-medium">
-                  {user.rol === 'satici' ? 'Satıcı Paneli' : 'Admin Paneli'}
-                </Link>
+            {/* Right side - Auth aware */}
+            <div className="flex items-center gap-3">
+              {isLoggedIn ? (
+                <>
+                  <Link to="/favorites" className="p-2 text-slate-500 hover:text-rose-500 transition-colors relative">
+                    <Heart size={24} className={favoriteIds.size > 0 ? 'fill-rose-400 text-rose-400' : ''} />
+                    {favoriteIds.size > 0 && (
+                      <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                        {favoriteIds.size > 9 ? '9+' : favoriteIds.size}
+                      </span>
+                    )}
+                  </Link>
+                  <Link to="/destek" className="p-2 text-slate-500 hover:text-indigo-600 transition-colors" title="Destek">
+                    <LifeBuoy size={22} />
+                  </Link>
+                  {(user.rol === 'satici' || user.rol === 'admin') && (
+                    <Link to={user.rol === 'satici' ? "/seller/dashboard" : "/admin"} className="px-3 py-1.5 text-sm font-semibold text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+                      {user.rol === 'satici' ? 'Satıcı Paneli' : 'Admin Paneli'}
+                    </Link>
+                  )}
+                  <Link to="/profile" className="px-3 py-1.5 text-sm text-slate-600 hover:text-indigo-600 transition-colors font-medium">Profilim</Link>
+                  <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full font-medium transition-colors text-sm">
+                    <LogOut size={16} /> Çıkış
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    to="/login"
+                    className="flex items-center gap-2 px-4 py-2 text-slate-700 hover:text-indigo-600 font-semibold transition-colors text-sm"
+                  >
+                    <LogIn size={16} /> Giriş Yap
+                  </Link>
+                  <Link
+                    to="/register"
+                    className="flex items-center gap-2 px-5 py-2 bg-indigo-600 text-white rounded-full font-semibold hover:bg-indigo-700 transition-colors shadow-md shadow-indigo-200 text-sm"
+                  >
+                    <UserPlus size={16} /> Üye Ol
+                  </Link>
+                </>
               )}
-              <Link to="/profile" className="p-2 text-slate-500 hover:text-indigo-600 transition-colors font-medium">Profilim</Link>
-              <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full font-medium transition-colors">
-                <LogOut size={18} /> Çıkış
-              </button>
             </div>
           </div>
         </div>
@@ -155,7 +186,17 @@ const HomePage: React.FC = () => {
         <div className="absolute inset-0 opacity-20 bg-[url('https://images.unsplash.com/photo-1513364776144-60967b0f800f?q=80&w=2071&auto=format&fit=crop')] bg-cover bg-center"></div>
         <div className="relative max-w-7xl mx-auto px-4 text-center">
           <h1 className="text-4xl md:text-6xl font-black mb-6 tracking-tight">Göz Alan Eserleri Keşfedin</h1>
-          <p className="text-lg text-slate-300 max-w-2xl mx-auto">Dünyanın dört bir yanından yetenekli sanatçıların özel koleksiyonlarına anında erişin.</p>
+          <p className="text-lg text-slate-300 max-w-2xl mx-auto mb-8">Dünyanın dört bir yanından yetenekli sanatçıların özel koleksiyonlarına anında erişin.</p>
+          {!isLoggedIn && (
+            <div className="flex gap-4 justify-center">
+              <Link to="/register" className="px-8 py-3 bg-indigo-600 text-white font-bold rounded-full hover:bg-indigo-500 transition-colors shadow-xl shadow-indigo-900/50">
+                Ücretsiz Üye Ol
+              </Link>
+              <Link to="/login" className="px-8 py-3 bg-white/10 border border-white/20 text-white font-bold rounded-full hover:bg-white/20 transition-colors backdrop-blur-sm">
+                Giriş Yap
+              </Link>
+            </div>
+          )}
         </div>
       </div>
 
@@ -193,11 +234,11 @@ const HomePage: React.FC = () => {
             {/* Filter panel toggle */}
             <button
               onClick={() => setShowFilterPanel(!showFilterPanel)}
-              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl border shadow-sm transition-all ${showFilterPanel || (priceMin || priceMax) ? 'bg-indigo-600 text-white border-indigo-600' : 'text-slate-600 bg-white border-slate-200 hover:border-slate-300'}`}
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl border shadow-sm transition-all ${showFilterPanel || (priceMin || priceMax || filterKuponlu) ? 'bg-indigo-600 text-white border-indigo-600' : 'text-slate-600 bg-white border-slate-200 hover:border-slate-300'}`}
             >
               <SlidersHorizontal size={16} />
-              Fiyat Filtresi
-              {(priceMin || priceMax) && <span className="w-2 h-2 bg-amber-400 rounded-full"></span>}
+              Filtreler
+              {(priceMin || priceMax || filterKuponlu) && <span className="w-2 h-2 bg-amber-400 rounded-full"></span>}
             </button>
           </div>
         </div>
@@ -227,6 +268,16 @@ const HomePage: React.FC = () => {
                 className="w-32 px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
+            <div className="flex items-center gap-2 pb-2 mr-4">
+              <input 
+                type="checkbox" 
+                id="kuponlu" 
+                checked={filterKuponlu} 
+                onChange={e => setFilterKuponlu(e.target.checked)}
+                className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 border-slate-300 cursor-pointer" 
+              />
+              <label htmlFor="kuponlu" className="text-sm font-bold text-slate-700 cursor-pointer">Kuponlu Eserler</label>
+            </div>
             <div className="flex gap-2">
               <button
                 onClick={() => setShowFilterPanel(false)}
@@ -235,7 +286,7 @@ const HomePage: React.FC = () => {
                 Filtrele
               </button>
               <button
-                onClick={() => { setPriceMin(''); setPriceMax(''); }}
+                onClick={() => { setPriceMin(''); setPriceMax(''); setFilterKuponlu(false); }}
                 className="px-4 py-2 text-sm text-slate-500 hover:text-rose-500 font-medium transition-colors"
               >
                 Sıfırla
@@ -266,27 +317,34 @@ const HomePage: React.FC = () => {
                       Tükendi
                     </div>
                   )}
-                  <button
-                    onClick={(e) => toggleFavorite(e, art.id)}
-                    disabled={togglingId === art.id}
-                    className={`absolute top-4 right-4 p-2.5 backdrop-blur-md rounded-full transition-all opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 disabled:opacity-60 ${
-                      favoriteIds.has(art.id)
-                        ? 'bg-rose-500 text-white shadow-lg shadow-rose-300'
-                        : 'bg-white/60 text-slate-600 hover:text-rose-500 hover:bg-white'
-                    }`}
-                    title={favoriteIds.has(art.id) ? 'Favorilerden Çıkar' : 'Favorilere Ekle'}
-                  >
-                    {togglingId === art.id ? (
-                      <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <Heart size={18} className={favoriteIds.has(art.id) ? 'fill-white' : ''} />
-                    )}
-                  </button>
+                  {art.has_kupon && (
+                    <div className={`absolute left-4 bg-amber-400 text-amber-900 text-[10px] font-black px-2 py-1 rounded shadow-md z-10 tracking-widest uppercase ${art.stok === 0 ? 'top-14' : 'top-4'}`}>
+                      🎟️ Kuponlu
+                    </div>
+                  )}
+                  {isLoggedIn && (
+                    <button
+                      onClick={(e) => toggleFavorite(e, art.id)}
+                      disabled={togglingId === art.id}
+                      className={`absolute top-4 right-4 p-2.5 backdrop-blur-md rounded-full transition-all opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 disabled:opacity-60 ${
+                        favoriteIds.has(art.id)
+                          ? 'bg-rose-500 text-white shadow-lg shadow-rose-300'
+                          : 'bg-white/60 text-slate-600 hover:text-rose-500 hover:bg-white'
+                      }`}
+                      title={favoriteIds.has(art.id) ? 'Favorilerden Çıkar' : 'Favorilere Ekle'}
+                    >
+                      {togglingId === art.id ? (
+                        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Heart size={18} className={favoriteIds.has(art.id) ? 'fill-white' : ''} />
+                      )}
+                    </button>
+                  )}
                 </div>
                 <div className="p-5 flex flex-col flex-1">
                   <div className="flex justify-between items-start mb-2">
                     <h3 className="font-bold text-lg text-slate-800 line-clamp-1">{art.baslik}</h3>
-                    <span className="font-black text-indigo-600 shrink-0 ml-2">₺{art.fiyat}</span>
+                    <span className="font-black text-indigo-600 shrink-0 ml-2">₺{Number(art.fiyat).toLocaleString('tr-TR')}</span>
                   </div>
                   <div className="flex items-center gap-2 mb-4 mt-1">
                     <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-500">

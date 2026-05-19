@@ -1,6 +1,6 @@
 const pool = require('../db');
 
-// Bir eserin yorumlarını getir
+// Bir eserin yorumlarını getir (sahip yanıtı dahil)
 exports.getEserYorumlari = async (req, res) => {
   const { eserId } = req.params;
   try {
@@ -18,7 +18,7 @@ exports.getEserYorumlari = async (req, res) => {
   }
 };
 
-// Bir etkinliğin yorumlarını getir
+// Bir etkinliğin yorumlarını getir (sahip yanıtı dahil)
 exports.getEtkinlikYorumlari = async (req, res) => {
   const { etkinlikId } = req.params;
   try {
@@ -36,9 +36,15 @@ exports.getEtkinlikYorumlari = async (req, res) => {
   }
 };
 
-// Yorum ekle
+// Yorum ekle (yalnızca giriş yapmış kullanıcılar)
 exports.addYorum = async (req, res) => {
   const { kullanici_id, eser_id, etkinlik_id, puan, metin } = req.body;
+
+  // Giriş zorunluluğu
+  if (!kullanici_id) {
+    return res.status(401).json({ error: 'Yorum yapabilmek için giriş yapmalısınız.' });
+  }
+
   try {
     let dogrulanmis = false;
 
@@ -62,7 +68,7 @@ exports.addYorum = async (req, res) => {
           error: 'Bu etkinliğe yorum yapabilmek için etkinliğe rezervasyon yapmış ve katılmış olmanız gerekmektedir.'
         });
       }
-      dogrulanmis = true; // Etkinliğe katılan herkes doğrulanmış sayılır
+      dogrulanmis = true;
     } else {
       return res.status(400).json({ error: 'Eser veya etkinlik belirtilmesi zorunludur.' });
     }
@@ -87,6 +93,49 @@ exports.voteYorum = async (req, res) => {
       [id]
     );
     res.json({ faydali_oy_sayisi: result.rows[0].faydali_oy_sayisi });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Sahip yanıtı ekle/güncelle (eser/etkinlik sahibi tarafından)
+exports.addSahipYaniti = async (req, res) => {
+  const { id } = req.params;
+  const { sahip_yaniti, kullanici_id } = req.body;
+  try {
+    // Yorumun bu kullanıcıya ait esere/etkinliğe bağlı olduğunu doğrula
+    const yorumRes = await pool.query('SELECT * FROM yorumlar WHERE id = $1', [id]);
+    if (yorumRes.rows.length === 0) return res.status(404).json({ error: 'Yorum bulunamadı.' });
+    const yorum = yorumRes.rows[0];
+
+    // Satıcı/sanatçı yetkisi kontrolü
+    let yetkili = false;
+    if (yorum.eser_id) {
+      const eserRes = await pool.query(
+        `SELECT s.kullanici_id FROM eserler e JOIN sanatcilar s ON e.sanatci_id = s.id WHERE e.id = $1`,
+        [yorum.eser_id]
+      );
+      if (eserRes.rows.length > 0 && Number(eserRes.rows[0].kullanici_id) === Number(kullanici_id)) yetkili = true;
+    }
+    if (yorum.etkinlik_id) {
+      const etkinlikRes = await pool.query(
+        `SELECT s.kullanici_id FROM etkinlikler e JOIN sanatcilar s ON e.sanatci_id = s.id WHERE e.id = $1`,
+        [yorum.etkinlik_id]
+      );
+      if (etkinlikRes.rows.length > 0 && Number(etkinlikRes.rows[0].kullanici_id) === Number(kullanici_id)) yetkili = true;
+    }
+
+    // Admin her zaman yetkili
+    const adminRes = await pool.query('SELECT rol FROM kullanicilar WHERE id = $1', [kullanici_id]);
+    if (adminRes.rows.length > 0 && adminRes.rows[0].rol === 'admin') yetkili = true;
+
+    if (!yetkili) return res.status(403).json({ error: 'Bu yoruma yanıt verme yetkiniz yok.' });
+
+    const result = await pool.query(
+      'UPDATE yorumlar SET sahip_yaniti = $1, sahip_yaniti_tarihi = NOW() WHERE id = $2 RETURNING *',
+      [sahip_yaniti, id]
+    );
+    res.json(result.rows[0]);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

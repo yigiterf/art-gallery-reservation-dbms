@@ -10,6 +10,8 @@ interface Review {
   puan: number;
   metin: string;
   admin_yaniti: string | null;
+  sahip_yaniti: string | null;
+  sahip_yaniti_tarihi: string | null;
   faydali_oy_sayisi: number;
   dogrulanmis_satin_alma: boolean;
   tarih: string;
@@ -64,8 +66,13 @@ const ArtworkDetail: React.FC = () => {
   const [submitError, setSubmitError] = useState('');
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>('yeni');
+  const [replyingTo, setReplyingTo] = useState<number | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [replySubmitting, setReplySubmitting] = useState(false);
 
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const user = JSON.parse(localStorage.getItem('user') || 'null') || {};
+  // Eserin sahibi mi? (sanatci_id ile sanatcilar.kullanici_id eşleşmesine göre bakılır)
+  const isOwner = art && user.sanatci_id && art.sanatci_id === user.sanatci_id;
 
   const fetchReviews = async () => {
     try {
@@ -182,6 +189,24 @@ const ArtworkDetail: React.FC = () => {
       setReviews(prev => prev.map(r => r.id === reviewId ? { ...r, faydali_oy_sayisi: res.data.faydali_oy_sayisi } : r));
     } catch (e) { console.error(e); }
     finally { setVotingId(null); }
+  };
+
+  const handleSahipYaniti = async (reviewId: number) => {
+    if (!replyText.trim()) return;
+    setReplySubmitting(true);
+    try {
+      const res = await axios.put(`http://localhost:5000/api/yorumlar/${reviewId}/sahip-yaniti`, {
+        sahip_yaniti: replyText,
+        kullanici_id: user.id,
+      });
+      setReviews(prev => prev.map(r => r.id === reviewId ? { ...r, sahip_yaniti: res.data.sahip_yaniti, sahip_yaniti_tarihi: res.data.sahip_yaniti_tarihi } : r));
+      setReplyingTo(null);
+      setReplyText('');
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Yanıt gönderilemedi.');
+    } finally {
+      setReplySubmitting(false);
+    }
   };
 
   const sortedReviews = [...reviews].sort((a, b) => {
@@ -360,15 +385,63 @@ const ArtworkDetail: React.FC = () => {
                         </div>
                         <StarRating value={review.puan} readonly />
                         <p className="text-slate-700 text-sm leading-relaxed mt-2">{review.metin}</p>
-                        {review.admin_yaniti && (
+
+                        {/* Sahip Yanıtı (özel stil) */}
+                        {review.sahip_yaniti && (
+                          <div className="mt-3 pl-4 border-l-4 border-indigo-500 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-r-xl p-4">
+                            <p className="text-xs font-bold text-indigo-600 mb-1 flex items-center gap-1">
+                              <CheckCircle size={11} className="fill-indigo-600 text-white" /> Sanatçı Yanıtı
+                              <span className="ml-2 text-[10px] text-slate-400 font-normal">{review.sahip_yaniti_tarihi ? new Date(review.sahip_yaniti_tarihi).toLocaleDateString('tr-TR') : ''}</span>
+                            </p>
+                            <p className="text-sm text-slate-700">{review.sahip_yaniti}</p>
+                          </div>
+                        )}
+
+                        {/* Admin Yanıtı */}
+                        {review.admin_yaniti && !review.sahip_yaniti && (
                           <div className="mt-3 pl-4 border-l-2 border-indigo-200 bg-indigo-50/60 rounded-r-xl p-3">
                             <p className="text-xs font-semibold text-indigo-500 mb-1 flex items-center gap-1"><CheckCircle size={11} /> Galeri Yanıtı</p>
                             <p className="text-sm text-slate-700">{review.admin_yaniti}</p>
                           </div>
                         )}
-                        <button onClick={() => handleVote(review.id)} disabled={votingId === review.id} className="mt-3 flex items-center gap-1.5 text-xs text-slate-400 hover:text-indigo-500 transition-colors disabled:opacity-50">
-                          <ThumbsUp size={13} /> Faydalı ({review.faydali_oy_sayisi})
-                        </button>
+
+                        <div className="flex items-center gap-3 mt-3 flex-wrap">
+                          <button onClick={() => handleVote(review.id)} disabled={votingId === review.id} className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-indigo-500 transition-colors disabled:opacity-50">
+                            <ThumbsUp size={13} /> Faydalı ({review.faydali_oy_sayisi})
+                          </button>
+                          {/* Sahip yanıt butonu */}
+                          {(isOwner || user.rol === 'admin') && !review.sahip_yaniti && (
+                            <button
+                              onClick={() => { setReplyingTo(review.id); setReplyText(''); }}
+                              className="text-xs text-indigo-500 hover:text-indigo-700 font-medium flex items-center gap-1"
+                            >
+                              <Send size={12} /> Yanıtla
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Inline Reply Form */}
+                        {replyingTo === review.id && (
+                          <div className="mt-3 flex gap-2">
+                            <input
+                              type="text"
+                              value={replyText}
+                              onChange={e => setReplyText(e.target.value)}
+                              placeholder="Sanatçı olarak yanıtınızı yazın..."
+                              className="flex-1 px-3 py-2 border border-indigo-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                            />
+                            <button
+                              onClick={() => handleSahipYaniti(review.id)}
+                              disabled={replySubmitting || !replyText.trim()}
+                              className="px-4 py-2 bg-indigo-600 text-white text-xs font-bold rounded-xl hover:bg-indigo-700 disabled:opacity-50"
+                            >
+                              {replySubmitting ? '...' : 'Gönder'}
+                            </button>
+                            <button onClick={() => setReplyingTo(null)} className="px-3 py-2 text-slate-400 hover:text-slate-600 text-xs">
+                              İptal
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

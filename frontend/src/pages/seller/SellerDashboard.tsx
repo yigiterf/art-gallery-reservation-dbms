@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
-import { LogOut, ImagePlus, UserCircle, Send, LayoutDashboard, UploadCloud, CalendarPlus, BarChart3, HelpCircle, AlertCircle, Home } from 'lucide-react';
+import { LogOut, ImagePlus, UserCircle, Send, LayoutDashboard, UploadCloud, CalendarPlus, BarChart3, HelpCircle, AlertCircle, Home, Tag, Trash2, Edit3 } from 'lucide-react';
 
 const SellerDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'yayinla' | 'eserlerim' | 'etkinlik' | 'etkinliklerim' | 'siparisler' | 'analiz' | 'destek'>('yayinla');
+  const [activeTab, setActiveTab] = useState<'profil' | 'yayinla' | 'eserlerim' | 'etkinlik' | 'etkinliklerim' | 'siparisler' | 'analiz' | 'kupon' | 'destek'>('yayinla');
   
   // Eser States
   const [form, setForm] = useState({ baslik: '', aciklama: '', fiyat: '', stok: '1' });
@@ -20,12 +20,24 @@ const SellerDashboard: React.FC = () => {
   const [myEvents, setMyEvents] = useState<any[]>([]);
   const [myOrders, setMyOrders] = useState<any[]>([]);
 
+  // Kupon States
+  const [kuponlar, setKuponlar] = useState<any[]>([]);
+  const [kuponForm, setKuponForm] = useState({
+    kod: '', indirim_yuzdesi: '10', hedef_turu: 'tum', aciklama: '',
+    min_yas: '', max_yas: '', cinsiyet_kisitlamasi: ''
+  });
+  const [kuponYasKisitla, setKuponYasKisitla] = useState(false);
+  const [kuponCinsiyetKisitla, setKuponCinsiyetKisitla] = useState(false);
+
   // Analiz States
   const [istatistikler, setIstatistikler] = useState({ etkinlikler: [], analiz: [] });
   
   // Destek States
   const [destekForm, setDestekForm] = useState({ konu: '', mesaj: '' });
   const [taleplerim, setTaleplerim] = useState<any[]>([]);
+
+  // Profil States
+  const [profilForm, setProfilForm] = useState({ ad: '', biyografi: '' });
 
   // UI States
   const [loading, setLoading] = useState(false);
@@ -69,6 +81,14 @@ const SellerDashboard: React.FC = () => {
       axios.get(`http://localhost:5000/api/islemler/satici/${user.sanatci_id}`).then(res => {
          setMyOrders(res.data);
       });
+    } else if (activeTab === 'kupon') {
+      axios.get(`http://localhost:5000/api/islemler/kupon/satici/${user.sanatci_id}`).then(res => {
+         setKuponlar(res.data);
+      }).catch(console.error);
+    } else if (activeTab === 'profil') {
+      axios.get(`http://localhost:5000/api/sanatcilar/${user.sanatci_id}/profil`).then(res => {
+         setProfilForm({ ad: res.data.ad || '', biyografi: res.data.biyografi || '' });
+      }).catch(console.error);
     }
   }, [activeTab, user]);
 
@@ -125,6 +145,42 @@ const SellerDashboard: React.FC = () => {
     } finally { setLoading(false); }
   };
 
+  const handleKuponOlustur = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!kuponForm.kod.trim()) return alert('Kupon kodu giriniz.');
+    setLoading(true); setSuccess('');
+    try {
+      await axios.post('http://localhost:5000/api/islemler/kupon', {
+        kod: kuponForm.kod,
+        indirim_yuzdesi: parseInt(kuponForm.indirim_yuzdesi),
+        sanatci_id: user.sanatci_id,
+        hedef_turu: kuponForm.hedef_turu,
+        aciklama: kuponForm.aciklama || null,
+        min_yas: kuponYasKisitla && kuponForm.min_yas ? parseInt(kuponForm.min_yas) : null,
+        max_yas: kuponYasKisitla && kuponForm.max_yas ? parseInt(kuponForm.max_yas) : null,
+        cinsiyet_kisitlamasi: kuponCinsiyetKisitla && kuponForm.cinsiyet_kisitlamasi ? kuponForm.cinsiyet_kisitlamasi : null,
+      });
+      setSuccess('Kupon başarıyla oluşturuldu!');
+      setKuponForm({ kod: '', indirim_yuzdesi: '10', hedef_turu: 'tum', aciklama: '', min_yas: '', max_yas: '', cinsiyet_kisitlamasi: '' });
+      setKuponYasKisitla(false); setKuponCinsiyetKisitla(false);
+      const res = await axios.get(`http://localhost:5000/api/islemler/kupon/satici/${user.sanatci_id}`);
+      setKuponlar(res.data);
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Kupon oluşturulamadı.');
+    } finally { setLoading(false); }
+  };
+
+  const handleKuponSil = async (id: number) => {
+    if (!window.confirm('Bu kuponu silmek istiyor musunuz?')) return;
+    try {
+      await axios.delete(`http://localhost:5000/api/islemler/kupon/${id}`);
+      setKuponlar(kuponlar.filter(k => k.id !== id));
+    } catch {
+      alert('Kupon silinemedi.');
+    }
+  };
+
   const handleUpdateKontenjan = async (etkinlikId: number, newKontenjan: number) => {
     try {
       await axios.put(`http://localhost:5000/api/etkinlikler/${etkinlikId}/kontenjan`, {
@@ -159,6 +215,18 @@ const SellerDashboard: React.FC = () => {
     finally { setLoading(false); }
   };
 
+  const handleUpdateProfil = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true); setSuccess('');
+    try {
+      await axios.put(`http://localhost:5000/api/sanatcilar/${user.sanatci_id}`, profilForm);
+      setSuccess('Profil bilgileriniz güncellendi!');
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err) {
+      alert('Profil güncellenemedi.');
+    } finally { setLoading(false); }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -180,7 +248,12 @@ const SellerDashboard: React.FC = () => {
         </div>
         
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest pl-3 mb-2 mt-2">Eser Yönetimi</p>
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest pl-3 mb-2 mt-2">Hesap</p>
+          <button onClick={() => setActiveTab('profil')} className={`flex items-center gap-3 w-full p-3 rounded-xl font-medium transition-colors ${activeTab === 'profil' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+            <Edit3 size={20} /> Profilim (Biyografi)
+          </button>
+
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest pl-3 mb-2 mt-6">Eser Yönetimi</p>
           <button onClick={() => setActiveTab('yayinla')} className={`flex items-center gap-3 w-full p-3 rounded-xl font-medium transition-colors ${activeTab === 'yayinla' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
             <ImagePlus size={20} /> Eser Yayınla
           </button>
@@ -196,6 +269,11 @@ const SellerDashboard: React.FC = () => {
             <CalendarPlus size={20} /> Etkinliklerim
           </button>
           
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest pl-3 mb-2 mt-6">Kupon Yönetimi</p>
+          <button onClick={() => setActiveTab('kupon')} className={`flex items-center gap-3 w-full p-3 rounded-xl font-medium transition-colors ${activeTab === 'kupon' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
+            <Tag size={20} /> İndirim Kuponları
+          </button>
+
           <p className="text-xs font-bold text-slate-500 uppercase tracking-widest pl-3 mb-2 mt-6">Sipariş Yönetimi</p>
           <button onClick={() => setActiveTab('siparisler')} className={`flex items-center gap-3 w-full p-3 rounded-xl font-medium transition-colors ${activeTab === 'siparisler' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}>
             <BarChart3 size={20} /> Gelen Siparişler
@@ -234,6 +312,32 @@ const SellerDashboard: React.FC = () => {
             <div className="bg-emerald-50 text-emerald-700 p-4 rounded-xl mb-8 border border-emerald-200 font-medium flex items-center gap-3 animate-in fade-in zoom-in slide-in-from-top-4 absolute top-8 right-8 z-50">
               <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center">✓</div>
               {success}
+            </div>
+          )}
+
+          {activeTab === 'profil' && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="mb-10">
+                <h2 className="text-3xl font-bold text-slate-800 mb-2">Profil Ayarları</h2>
+                <p className="text-slate-500">Kullanıcıların "Sanatçı Profili" sayfanızda göreceği vitrin bilgilerinizi (isim ve biyografi) güncelleyin.</p>
+              </div>
+              <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200">
+                <form onSubmit={handleUpdateProfil} className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">Görünen Sanatçı Adı <span className="text-rose-500">*</span></label>
+                    <input type="text" required value={profilForm.ad} onChange={e => setProfilForm({...profilForm, ad: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all outline-none" placeholder="Adınız veya Sahne Adınız" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">Biyografi & Hakkımda</label>
+                    <textarea rows={6} value={profilForm.biyografi} onChange={e => setProfilForm({...profilForm, biyografi: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all outline-none resize-none" placeholder="Kariyeriniz, sanat anlayışınız ve ilham kaynaklarınız hakkında bilgi verin..." />
+                  </div>
+                  <div className="pt-4 border-t border-slate-100 flex justify-end">
+                    <button disabled={loading} type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-indigo-200 disabled:opacity-70 disabled:cursor-not-allowed">
+                      <Send size={18} /> {loading ? 'Güncelleniyor...' : 'Profili Güncelle'}
+                    </button>
+                  </div>
+                </form>
+              </div>
             </div>
           )}
 
@@ -435,6 +539,131 @@ const SellerDashboard: React.FC = () => {
                 {myOrders.length === 0 && (
                   <div className="col-span-full py-20 text-center text-slate-400 border border-dashed border-slate-300 rounded-3xl">
                     <p>Henüz sipariş/rezervasyon yok.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'kupon' && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="mb-10">
+                <h2 className="text-3xl font-bold text-slate-800 mb-2">Kupon Yönetimi</h2>
+                <p className="text-slate-500">Belirli yaş aralığı veya cinsiyete özel indirim kuponları oluşturun.</p>
+              </div>
+
+              {/* Kupon Oluşturma Formu */}
+              <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200 mb-8">
+                <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2"><Tag size={20} className="text-indigo-500" /> Yeni Kupon Oluştur</h3>
+                <form onSubmit={handleKuponOlustur} className="space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Kupon Kodu <span className="text-rose-500">*</span></label>
+                      <input type="text" required value={kuponForm.kod} onChange={e => setKuponForm({...kuponForm, kod: e.target.value.toUpperCase()})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none font-mono tracking-widest uppercase" placeholder="ÖRN: YAZ25" maxLength={20} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">İndirim Yüzdes i (%) <span className="text-rose-500">*</span></label>
+                      <input type="number" required min="1" max="100" value={kuponForm.indirim_yuzdesi} onChange={e => setKuponForm({...kuponForm, indirim_yuzdesi: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Hedef Türü</label>
+                      <select value={kuponForm.hedef_turu} onChange={e => setKuponForm({...kuponForm, hedef_turu: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <option value="tum">Tümü (Eser + Etkinlik)</option>
+                        <option value="eser">Sadece Eserler</option>
+                        <option value="etkinlik">Sadece Etkinlikler</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">Açıklama</label>
+                      <input type="text" value={kuponForm.aciklama} onChange={e => setKuponForm({...kuponForm, aciklama: e.target.value})} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Örn: Gençlere özel" />
+                    </div>
+                  </div>
+
+                  {/* Yaş Kısıtlaması */}
+                  <div className="border border-slate-200 rounded-2xl p-5">
+                    <label className="flex items-center gap-3 cursor-pointer mb-4">
+                      <input type="checkbox" checked={kuponYasKisitla} onChange={e => setKuponYasKisitla(e.target.checked)} className="w-4 h-4 text-indigo-600 rounded" />
+                      <span className="font-semibold text-slate-700">Yaş Kısıtlaması Ekle</span>
+                      <span className="text-xs text-slate-400">(Belirli yaş aralığındaki kullanıcılara özel)</span>
+                    </label>
+                    {kuponYasKisitla && (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-600 mb-1">Minimum Yaş</label>
+                          <input type="number" min="1" max="100" value={kuponForm.min_yas} onChange={e => setKuponForm({...kuponForm, min_yas: e.target.value})} className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Örn: 16" />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-slate-600 mb-1">Maksimum Yaş</label>
+                          <input type="number" min="1" max="100" value={kuponForm.max_yas} onChange={e => setKuponForm({...kuponForm, max_yas: e.target.value})} className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Örn: 24" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Cinsiyet Kısıtlaması */}
+                  <div className="border border-slate-200 rounded-2xl p-5">
+                    <label className="flex items-center gap-3 cursor-pointer mb-4">
+                      <input type="checkbox" checked={kuponCinsiyetKisitla} onChange={e => setKuponCinsiyetKisitla(e.target.checked)} className="w-4 h-4 text-indigo-600 rounded" />
+                      <span className="font-semibold text-slate-700">Cinsiyet Kısıtlaması Ekle</span>
+                      <span className="text-xs text-slate-400">(Belirli cinsiyetteki kullanıcılara özel)</span>
+                    </label>
+                    {kuponCinsiyetKisitla && (
+                      <div className="flex gap-3">
+                        {['Kadin', 'Erkek', 'Diger'].map(c => (
+                          <button
+                            type="button"
+                            key={c}
+                            onClick={() => setKuponForm({...kuponForm, cinsiyet_kisitlamasi: c})}
+                            className={`flex-1 py-2.5 rounded-xl border-2 font-semibold text-sm transition-all ${
+                              kuponForm.cinsiyet_kisitlamasi === c
+                                ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                                : 'border-slate-200 text-slate-600 hover:border-slate-300'
+                            }`}
+                          >
+                            {c === 'Kadin' ? 'Kadın' : c === 'Erkek' ? 'Erkek' : 'Diğer'}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-2 flex justify-end">
+                    <button type="submit" disabled={loading} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-indigo-200 disabled:opacity-70">
+                      <Tag size={18} /> {loading ? 'Oluşturuluyor...' : 'Kuponu Oluştur'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* Mevcut Kuponlar */}
+              <h3 className="text-xl font-bold text-slate-800 mb-4">Oluşturduğum Kuponlar</h3>
+              <div className="space-y-3">
+                {kuponlar.map(k => (
+                  <div key={k.id} className="bg-white border border-slate-200 rounded-2xl p-5 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="bg-indigo-100 text-indigo-700 font-mono font-black px-4 py-2 rounded-xl tracking-widest text-sm">{k.kod}</div>
+                      <div>
+                        <p className="font-bold text-slate-800">%{k.indirim_yuzdesi} İndirim</p>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          {k.min_yas && <span className="text-xs bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full border border-amber-100">{k.min_yas}–{k.max_yas || '+'} yaş</span>}
+                          {k.cinsiyet_kisitlamasi && <span className="text-xs bg-purple-50 text-purple-700 px-2 py-0.5 rounded-full border border-purple-100">{k.cinsiyet_kisitlamasi === 'Kadin' ? 'Kadın' : k.cinsiyet_kisitlamasi === 'Erkek' ? 'Erkek' : 'Diğer'}</span>}
+                          {k.hedef_turu !== 'tum' && <span className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">{k.hedef_turu === 'eser' ? 'Eserler' : 'Etkinlikler'}</span>}
+                          {k.aciklama && <span className="text-xs text-slate-500">{k.aciklama}</span>}
+                        </div>
+                      </div>
+                    </div>
+                    <button onClick={() => handleKuponSil(k.id)} className="p-2 text-slate-300 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors">
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
+                {kuponlar.length === 0 && (
+                  <div className="py-16 bg-white rounded-3xl border border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400">
+                    <Tag size={40} className="mb-3 text-slate-300" />
+                    <p>Henüz kupon oluşturmadınız.</p>
                   </div>
                 )}
               </div>
