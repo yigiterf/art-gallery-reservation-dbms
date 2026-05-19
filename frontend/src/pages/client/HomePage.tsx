@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
-import { Heart, Search, Filter, LogOut, Brush, GitCompare, LifeBuoy, X, ChevronDown, SlidersHorizontal } from 'lucide-react';
+import { Heart, Search, LogOut, Brush, GitCompare, LifeBuoy, X, ChevronDown, SlidersHorizontal } from 'lucide-react';
 
 const SORT_OPTIONS = [
   { value: 'yeni', label: 'En Yeni' },
@@ -261,6 +261,11 @@ const HomePage: React.FC = () => {
                       <Brush size={48} />
                     </div>
                   )}
+                  {art.stok === 0 && (
+                    <div className="absolute top-4 left-4 bg-rose-500 text-white text-xs font-black px-3 py-1.5 rounded-full shadow-lg z-10 tracking-widest uppercase">
+                      Tükendi
+                    </div>
+                  )}
                   <button
                     onClick={(e) => toggleFavorite(e, art.id)}
                     disabled={togglingId === art.id}
@@ -287,11 +292,14 @@ const HomePage: React.FC = () => {
                     <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-500">
                       {art.sanatci_adi ? art.sanatci_adi.charAt(0) : 'B'}
                     </div>
-                    <p className="text-sm text-slate-500 font-medium">{art.sanatci_adi || 'Bilinmeyen Sanatçı'}</p>
+                    <p className="text-sm text-slate-500 font-medium flex-1">{art.sanatci_adi || 'Bilinmeyen Sanatçı'}</p>
+                    <div className="text-xs font-semibold text-slate-400 bg-slate-100 px-2 py-1 rounded-md">
+                      Stok: {art.stok}
+                    </div>
                   </div>
                   <div className="mt-auto pt-2">
-                    <button className="w-full py-2.5 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-colors shadow-md">
-                      İncele ve Satın Al
+                    <button disabled={art.stok === 0} className="w-full py-2.5 bg-slate-900 text-white rounded-xl font-medium hover:bg-slate-800 transition-colors shadow-md disabled:bg-slate-300 disabled:shadow-none disabled:cursor-not-allowed">
+                      {art.stok === 0 ? 'Tükendi' : 'İncele ve Satın Al'}
                     </button>
                   </div>
                 </div>

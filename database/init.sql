@@ -20,7 +20,8 @@ CREATE TABLE eserler (
     baslik VARCHAR(200) NOT NULL,
     aciklama TEXT,
     fiyat DECIMAL(10,2) NOT NULL,
-    gorsel_url VARCHAR(255)
+    gorsel_url VARCHAR(255),
+    stok INTEGER DEFAULT 1
 );
 
 -- 2. Atölye ve Etkinlikleri Görüntüleme

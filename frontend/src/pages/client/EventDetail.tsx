@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { ArrowLeft, Calendar, Clock, Users, Ticket, Star, MessageSquare, Send, CheckCircle, ThumbsUp, Tag, X, ChevronDown, XCircle } from 'lucide-react';
+import { ArrowLeft, Calendar, Users, Ticket, Star, MessageSquare, Send, CheckCircle, ThumbsUp, Tag, X, ChevronDown, XCircle } from 'lucide-react';
 
 interface Review {
   id: number;
@@ -31,6 +31,7 @@ const EventDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [eventData, setEventData] = useState<any>(null);
+  const [allEvents, setAllEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [reserving, setReserving] = useState(false);
 
@@ -64,6 +65,7 @@ const EventDetail: React.FC = () => {
   useEffect(() => {
     axios.get('http://localhost:5000/api/etkinlikler')
       .then(res => {
+        setAllEvents(res.data);
         const found = res.data.find((item: any) => item.id === Number(id));
         setEventData(found);
       })
@@ -112,9 +114,9 @@ const EventDetail: React.FC = () => {
       setShowResModal(false);
       alert(`Rezervasyon başarılı! ${katilimciSayisi} kişi için yeriniz ayrıldı.`);
       setEventData((prev: any) => ({ ...prev, kontenjan: prev.kontenjan - katilimciSayisi }));
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('İşlem başarısız oldu.');
+      setPayError(err.response?.data?.message || 'İşlem başarısız oldu.');
     } finally {
       setReserving(false);
     }
@@ -164,6 +166,8 @@ const EventDetail: React.FC = () => {
   const formatTime = (d: string) => new Date(d).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
   const avgRating = reviews.length > 0 ? (reviews.reduce((s, r) => s + r.puan, 0) / reviews.length).toFixed(1) : null;
 
+  const availableSessions = allEvents.filter(e => e.baslik === eventData?.baslik).sort((a, b) => new Date(a.tarih_saat).getTime() - new Date(b.tarih_saat).getTime());
+
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-slate-50"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div></div>;
   if (!eventData) return <div className="min-h-screen flex items-center justify-center bg-slate-50"><p>Etkinlik bulunamadı.</p></div>;
 
@@ -189,10 +193,18 @@ const EventDetail: React.FC = () => {
           </div>
 
           <div className="w-full md:w-1/2 p-8 lg:p-12 flex flex-col">
-            <div className="mb-2">
+            <div className="mb-2 flex items-center gap-2">
               <span className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg text-sm font-bold tracking-wide uppercase">
                 {eventData.tur === 'Atölye' ? '🎨 Sanat Atölyesi' : '🏛️ Sergi'}
               </span>
+              {eventData.sanatci_adi && (
+                <a href={`/sanatci/${eventData.sanatci_id}`} className="text-sm font-semibold text-slate-600 hover:text-indigo-600 flex items-center gap-2 ml-4">
+                  <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-500">
+                    {eventData.sanatci_adi.charAt(0)}
+                  </div>
+                  {eventData.sanatci_adi}
+                </a>
+              )}
             </div>
             <h1 className="text-4xl font-black text-slate-800 tracking-tight leading-tight mt-4 mb-2">{eventData.baslik}</h1>
 
@@ -220,6 +232,26 @@ const EventDetail: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            {availableSessions.length > 1 && (
+              <div className="mb-6 bg-purple-50 p-4 rounded-2xl border border-purple-100">
+                <label className="block text-sm font-bold text-purple-700 mb-2">Farklı Bir Oturum Seçin</label>
+                <div className="relative">
+                  <select
+                    value={eventData.id}
+                    onChange={(e) => navigate(`/etkinlik/${e.target.value}`)}
+                    className="w-full appearance-none pl-4 pr-10 py-3 border border-purple-200 rounded-xl text-sm font-semibold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer shadow-sm"
+                  >
+                    {availableSessions.map((session) => (
+                      <option key={session.id} value={session.id}>
+                        {formatDate(session.tarih_saat)} - {formatTime(session.tarih_saat)} (Kalan: {session.kontenjan})
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-purple-500 pointer-events-none" />
+                </div>
+              </div>
+            )}
 
             <button
               onClick={() => setShowResModal(true)}
@@ -338,10 +370,31 @@ const EventDetail: React.FC = () => {
       {showResModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md relative">
-            <button onClick={() => { setShowResModal(false); setKuponData(null); setKuponKod(''); setKuponMsg(''); }} className="absolute top-5 right-5 p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"><X size={20} /></button>
+            <button onClick={() => { setShowResModal(false); setKuponData(null); setKuponKod(''); setKuponMsg(''); setPayError(''); }} className="absolute top-5 right-5 p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"><X size={20} /></button>
 
             <h2 className="text-2xl font-black text-slate-800 mb-1">Rezervasyon Yap</h2>
             <p className="text-slate-500 text-sm mb-6">{eventData.baslik}</p>
+
+            {/* Oturum seçeneği (Modal İçi) */}
+            {availableSessions.length > 1 && (
+              <div className="mb-5">
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Oturum (Tarih & Saat)</label>
+                <div className="relative">
+                  <select
+                    value={eventData.id}
+                    onChange={(e) => navigate(`/etkinlik/${e.target.value}`)}
+                    className="w-full appearance-none pl-4 pr-10 py-3 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-sm"
+                  >
+                    {availableSessions.map((session) => (
+                      <option key={session.id} value={session.id}>
+                        {formatDate(session.tarih_saat)} - {formatTime(session.tarih_saat)} (Kalan: {session.kontenjan})
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                </div>
+              </div>
+            )}
 
             {/* Katılımcı sayısı */}
             <div className="mb-5">
@@ -393,6 +446,13 @@ const EventDetail: React.FC = () => {
                 <span className="text-indigo-600">₺{finalToplam}</span>
               </div>
             </div>
+
+            {payError && (
+              <div className="bg-rose-50 border border-rose-200 text-rose-600 px-4 py-3 rounded-xl text-sm font-semibold mb-6 flex items-center gap-2">
+                <X size={18} className="shrink-0" />
+                <span>{payError}</span>
+              </div>
+            )}
 
             <button onClick={handleReservation} disabled={reserving} className="w-full py-4 bg-indigo-600 text-white font-black text-lg rounded-xl hover:bg-indigo-700 transition-colors shadow-xl shadow-indigo-200 disabled:opacity-60">
               {reserving ? 'İşleniyor...' : `₺${finalToplam} Öde ve Rezervasyon Yap`}

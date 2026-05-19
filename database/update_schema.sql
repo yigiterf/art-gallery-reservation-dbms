@@ -1,0 +1,3 @@
+ALTER TABLE kullanicilar ADD COLUMN yas INTEGER;
+ALTER TABLE kullanicilar ADD COLUMN cinsiyet VARCHAR(20);
+ALTER TABLE sanatcilar ADD COLUMN kullanici_id INTEGER REFERENCES kullanicilar(id) ON DELETE CASCADE;

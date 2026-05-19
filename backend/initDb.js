@@ -25,7 +25,8 @@ const initDb = async () => {
           baslik VARCHAR(200) NOT NULL,
           aciklama TEXT,
           fiyat DECIMAL(10,2) NOT NULL,
-          gorsel_url VARCHAR(255)
+          gorsel_url VARCHAR(255),
+          stok INTEGER DEFAULT 1
       );
 
       CREATE TABLE IF NOT EXISTS etkinlikler (
@@ -91,6 +92,7 @@ const initDb = async () => {
       );
 
       ALTER TABLE sanatcilar ADD COLUMN IF NOT EXISTS kullanici_id INTEGER REFERENCES kullanicilar(id) ON DELETE CASCADE;
+      ALTER TABLE eserler ADD COLUMN IF NOT EXISTS stok INTEGER DEFAULT 1;
       
       ALTER TABLE kullanicilar ADD COLUMN IF NOT EXISTS yas INTEGER;
       ALTER TABLE kullanicilar ADD COLUMN IF NOT EXISTS cinsiyet VARCHAR(20);

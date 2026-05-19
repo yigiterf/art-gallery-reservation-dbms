@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { UserCog, Trash2, Edit2, Check, X } from 'lucide-react';
+import { UserCog } from 'lucide-react';
 
 const Users: React.FC = () => {
   const [users, setUsers] = useState<any[]>([]);

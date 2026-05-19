@@ -157,11 +157,11 @@ exports.getArtworks = async (req, res) => {
 };
 
 exports.addArtwork = async (req, res) => {
-  const { sanatci_id, baslik, aciklama, fiyat, gorsel_url } = req.body;
+  const { sanatci_id, baslik, aciklama, fiyat, gorsel_url, stok } = req.body;
   try {
     const result = await pool.query(
-      'INSERT INTO eserler (sanatci_id, baslik, aciklama, fiyat, gorsel_url) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [sanatci_id, baslik, aciklama, fiyat, gorsel_url]
+      'INSERT INTO eserler (sanatci_id, baslik, aciklama, fiyat, gorsel_url, stok) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [sanatci_id, baslik, aciklama, fiyat, gorsel_url, stok !== undefined ? stok : 1]
     );
     res.json(result.rows[0]);
   } catch (error) { res.status(500).json({ error: error.message }); }

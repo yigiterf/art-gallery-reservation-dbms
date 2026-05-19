@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import {
   ArrowLeft, GitCompare, Trash2, BookmarkPlus, CheckSquare, Square,
-  BarChart2, Users, DollarSign, CalendarDays, Brush, Star, X
+  BarChart2, Users, DollarSign, CalendarDays, Brush, X
 } from 'lucide-react';
 
 const ComparePage: React.FC = () => {

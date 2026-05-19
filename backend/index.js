@@ -13,6 +13,7 @@ const islemRoutes = require('./routes/islemRoutes');
 const favoriRoutes = require('./routes/favoriRoutes');
 const yorumRoutes = require('./routes/yorumRoutes');
 const karsilastirmaRoutes = require('./routes/karsilastirmaRoutes');
+const sanatciRoutes = require('./routes/sanatciRoutes');
 const path = require('path');
 
 const app = express();
@@ -36,6 +37,7 @@ app.use('/api/islemler', islemRoutes);
 app.use('/api/favoriler', favoriRoutes);
 app.use('/api/yorumlar', yorumRoutes);
 app.use('/api/karsilastirma', karsilastirmaRoutes);
+app.use('/api/sanatcilar', sanatciRoutes);
 
 app.get('/api/health', async (req, res) => {
   try {

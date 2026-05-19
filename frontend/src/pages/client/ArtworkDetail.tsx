@@ -54,6 +54,7 @@ const ArtworkDetail: React.FC = () => {
   const [kuponData, setKuponData] = useState<{ id: number; indirim_yuzdesi: number } | null>(null);
   const [kuponLoading, setKuponLoading] = useState(false);
   const [kuponMsg, setKuponMsg] = useState('');
+  const [payError, setPayError] = useState('');
 
   // Reviews
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -126,9 +127,9 @@ const ArtworkDetail: React.FC = () => {
       setShowPayModal(false);
       alert('Satın alma başarılı! Eseriniz kargoya verilmek üzere hazırlanıyor.');
       navigate('/profile');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('İşlem başarısız oldu.');
+      setPayError(err.response?.data?.message || 'İşlem başarısız oldu.');
     } finally {
       setPurchasing(false);
     }
@@ -222,7 +223,9 @@ const ArtworkDetail: React.FC = () => {
               <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-500">
                 {art.sanatci_adi ? art.sanatci_adi.charAt(0) : 'B'}
               </div>
-              <span className="font-semibold text-slate-600">{art.sanatci_adi || 'Bilinmeyen Sanatçı'}</span>
+              <a href={`/sanatci/${art.sanatci_id}`} className="font-semibold text-slate-600 hover:text-indigo-600 transition-colors">
+                {art.sanatci_adi || 'Bilinmeyen Sanatçı'}
+              </a>
             </div>
 
             <h1 className="text-4xl font-black text-slate-800 tracking-tight leading-tight mb-2">{art.baslik}</h1>
@@ -239,9 +242,17 @@ const ArtworkDetail: React.FC = () => {
               {art.aciklama || 'Sanatçı bu eser için henüz bir hikaye veya açıklama eklememiştir.'}
             </p>
 
-            <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 mb-8">
-              <div className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-1">Eser Değeri</div>
-              <div className="text-4xl font-black text-indigo-600">₺{art.fiyat}</div>
+            <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 mb-8 grid grid-cols-2">
+              <div>
+                <div className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-1">Eser Değeri</div>
+                <div className="text-4xl font-black text-indigo-600">₺{art.fiyat}</div>
+              </div>
+              <div className="text-right">
+                <div className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-1">Stok Durumu</div>
+                <div className={`text-2xl font-black ${art.stok > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                  {art.stok > 0 ? `${art.stok} Adet` : 'Tükendi'}
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4 mb-8">
@@ -253,9 +264,10 @@ const ArtworkDetail: React.FC = () => {
             <div className="flex gap-3">
               <button
                 onClick={() => setShowPayModal(true)}
-                className="flex-1 bg-indigo-600 text-white font-bold text-lg py-4 rounded-xl hover:bg-indigo-700 transition-colors shadow-xl shadow-indigo-200"
+                disabled={art.stok === 0}
+                className="flex-1 bg-indigo-600 text-white font-bold text-lg py-4 rounded-xl hover:bg-indigo-700 transition-colors shadow-xl shadow-indigo-200 disabled:opacity-50 disabled:bg-slate-400 disabled:shadow-none"
               >
-                Satın Al
+                {art.stok === 0 ? 'Tükendi' : 'Satın Al'}
               </button>
               <button
                 onClick={toggleFavorite}
@@ -371,7 +383,7 @@ const ArtworkDetail: React.FC = () => {
       {showPayModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md relative">
-            <button onClick={() => { setShowPayModal(false); setKuponData(null); setKuponKod(''); setKuponMsg(''); }} className="absolute top-5 right-5 p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"><X size={20} /></button>
+            <button onClick={() => { setShowPayModal(false); setKuponData(null); setKuponKod(''); setKuponMsg(''); setPayError(''); }} className="absolute top-5 right-5 p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"><X size={20} /></button>
 
             <h2 className="text-2xl font-black text-slate-800 mb-1">Satın Al</h2>
             <p className="text-slate-500 text-sm mb-6">{art.baslik}</p>
@@ -438,6 +450,13 @@ const ArtworkDetail: React.FC = () => {
                 <span className="text-indigo-600">₺{finalFiyat}</span>
               </div>
             </div>
+
+            {payError && (
+              <div className="bg-rose-50 border border-rose-200 text-rose-600 px-4 py-3 rounded-xl text-sm font-semibold mb-6 flex items-center gap-2">
+                <X size={18} className="shrink-0" />
+                <span>{payError}</span>
+              </div>
+            )}
 
             <button
               onClick={handlePurchase}

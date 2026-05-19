@@ -11,9 +11,12 @@ const FavoritesPage: React.FC = () => {
   const [removing, setRemoving] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!user.id) return navigate('/login');
+    if (!user.id) {
+      navigate('/login');
+      return;
+    }
     fetchFavorites();
-  }, []);
+  }, [navigate, user.id]);
 
   const fetchFavorites = async () => {
     setLoading(true);

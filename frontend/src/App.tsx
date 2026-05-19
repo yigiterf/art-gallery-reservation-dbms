@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
 // Admin Pages
@@ -26,6 +25,7 @@ import ProfilePage from './pages/client/ProfilePage';
 import FavoritesPage from './pages/client/FavoritesPage';
 import ComparePage from './pages/client/ComparePage';
 import ClientSupportPage from './pages/client/SupportPage';
+import ArtistProfile from './pages/client/ArtistProfile';
 import SellerDashboard from './pages/seller/SellerDashboard';
 
 import './index.css';
@@ -49,6 +49,7 @@ function App() {
         <Route path="/favorites" element={<FavoritesPage />} />
         <Route path="/karsilastir" element={<ComparePage />} />
         <Route path="/destek" element={<ClientSupportPage />} />
+        <Route path="/sanatci/:id" element={<ArtistProfile />} />
 
         {/* Seller Route */}
         <Route path="/seller/dashboard" element={<SellerDashboard />} />

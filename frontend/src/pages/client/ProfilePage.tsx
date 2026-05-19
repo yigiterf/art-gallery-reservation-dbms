@@ -9,6 +9,7 @@ import {
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
   const [islemler, setIslemler] = useState<any[]>([]);
+  const [allEvents, setAllEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
@@ -17,6 +18,11 @@ const ProfilePage: React.FC = () => {
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [editKatilimci, setEditKatilimci] = useState<{ [id: number]: number }>({});
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  
+  // ── Oturum (Session) Değiştirme ──
+  const [sessionExpandedId, setSessionExpandedId] = useState<number | null>(null);
+  const [selectedSessionId, setSelectedSessionId] = useState<{ [id: number]: number }>({});
+  const [sessionUpdatingId, setSessionUpdatingId] = useState<number | null>(null);
 
   // ── Profil düzenleme ──
   const [showProfileEdit, setShowProfileEdit] = useState(false);
@@ -40,9 +46,17 @@ const ProfilePage: React.FC = () => {
     finally { setLoading(false); }
   };
 
+  const fetchEvents = async () => {
+    try {
+      const res = await axios.get('http://localhost:5000/api/etkinlikler');
+      setAllEvents(res.data);
+    } catch (e) { console.error(e); }
+  };
+
   useEffect(() => {
     if (!user.id) { navigate('/login'); return; }
     fetchIslemler();
+    fetchEvents();
   }, [navigate, user.id]);
 
   const handleLogout = () => {
@@ -86,13 +100,30 @@ const ProfilePage: React.FC = () => {
     }
   };
 
+  // ─── Oturum değiştirme ───
+  const handleChangeSession = async (id: number) => {
+    const yeniId = selectedSessionId[id];
+    if (!yeniId) return alert('Lütfen geçerli bir oturum seçin.');
+    setSessionUpdatingId(id);
+    try {
+      await axios.put(`http://localhost:5000/api/islemler/${id}/session`, { yeni_etkinlik_id: yeniId });
+      alert('Rezervasyon oturumu güncellendi!');
+      setSessionExpandedId(null);
+      await fetchIslemler();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Oturum değiştirme başarısız.');
+    } finally {
+      setSessionUpdatingId(null);
+    }
+  };
+
   // ─── Profil güncelleme ───
   const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setProfileSaving(true);
     setProfileMsg('');
     try {
-      const res = await axios.put(`http://localhost:5000/api/auth/profil/${user.id}`, profileForm);
+      await axios.put(`http://localhost:5000/api/auth/profil/${user.id}`, profileForm);
       const updatedUser = { ...user, ad_soyad: profileForm.ad_soyad, email: profileForm.email };
       localStorage.setItem('user', JSON.stringify(updatedUser));
       setProfileMsg('✅ Bilgiler güncellendi!');
@@ -277,13 +308,19 @@ const ProfilePage: React.FC = () => {
                       <div className="flex-1">
                         <h3 className="font-bold text-slate-800">{islem.eser_baslik || 'Silinmiş Eser'}</h3>
                         <p className="text-indigo-600 font-black mb-1">₺{islem.toplam_tutar}</p>
-                        <div className="flex items-center gap-2 text-xs text-slate-500">
-                          {islem.durum === 'İptal Edildi'
-                            ? <XCircle size={14} className="text-rose-400" />
-                            : <CheckCircle size={14} className="text-emerald-500" />}
-                          <span>{islem.durum}</span>
-                          <span className="mx-1">•</span>
-                          <Clock size={14} />
+                        <div className="flex items-center gap-2 text-xs font-bold text-slate-500 mt-2">
+                          <span className={`px-2 py-1 rounded ${
+                            islem.durum === 'İptal Edildi' ? 'bg-rose-100 text-rose-600' :
+                            islem.durum === 'Bekliyor' ? 'bg-amber-100 text-amber-600' :
+                            'bg-emerald-100 text-emerald-600'
+                          }`}>
+                            {islem.durum === 'İptal Edildi' && <XCircle size={12} className="inline mr-1" />}
+                            {islem.durum === 'Bekliyor' && <Clock size={12} className="inline mr-1" />}
+                            {islem.durum === 'Onaylandı' && <CheckCircle size={12} className="inline mr-1" />}
+                            {islem.durum}
+                          </span>
+                          <span className="mx-1 text-slate-300">•</span>
+                          <Clock size={14} className="inline" />
                           <span>{formatDate(islem.islem_tarihi)}</span>
                         </div>
                       </div>
@@ -317,24 +354,39 @@ const ProfilePage: React.FC = () => {
                         </p>
                         <div className="flex items-center justify-between mt-2">
                           <div className="text-indigo-600 font-black text-sm">₺{islem.toplam_tutar}</div>
-                          <div className="flex items-center gap-1 text-xs text-slate-500">
-                            {islem.durum === 'İptal Edildi'
-                              ? <XCircle size={13} className="text-rose-400" />
-                              : <CheckCircle size={13} className="text-emerald-500" />}
-                            <span>{islem.durum}</span>
+                          <div className="flex items-center gap-1 text-xs font-bold text-slate-500">
+                            <span className={`px-2 py-1 rounded ${
+                              islem.durum === 'İptal Edildi' ? 'bg-rose-100 text-rose-600' :
+                              islem.durum === 'Bekliyor' ? 'bg-amber-100 text-amber-600' :
+                              'bg-emerald-100 text-emerald-600'
+                            }`}>
+                              {islem.durum === 'İptal Edildi' && <XCircle size={12} className="inline mr-1" />}
+                              {islem.durum === 'Bekliyor' && <Clock size={12} className="inline mr-1" />}
+                              {islem.durum === 'Onaylandı' && <CheckCircle size={12} className="inline mr-1" />}
+                              {islem.durum}
+                            </span>
                           </div>
                         </div>
 
                         {/* Aksiyon butonları — sadece aktif rezervasyonlar */}
                         {islem.durum !== 'İptal Edildi' && (
-                          <div className="flex gap-2 mt-3 pt-3 border-t border-slate-200">
+                          <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-slate-200">
                             <button
-                              onClick={() => setExpandedId(expandedId === islem.id ? null : islem.id)}
+                              onClick={() => { setExpandedId(expandedId === islem.id ? null : islem.id); setSessionExpandedId(null); }}
                               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50 transition-colors"
                             >
                               <Edit2 size={12} /> Kişi Güncelle
                               {expandedId === islem.id ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                             </button>
+                            {allEvents.filter(e => e.baslik === islem.etkinlik_baslik).length > 1 && (
+                              <button
+                                onClick={() => { setSessionExpandedId(sessionExpandedId === islem.id ? null : islem.id); setExpandedId(null); }}
+                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-purple-600 border border-purple-200 rounded-lg hover:bg-purple-50 transition-colors"
+                              >
+                                <Clock size={12} /> Oturum Değiştir
+                                {sessionExpandedId === islem.id ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                              </button>
+                            )}
                             <button
                               onClick={() => handleCancel(islem.id)}
                               disabled={cancellingId === islem.id}
@@ -349,9 +401,8 @@ const ProfilePage: React.FC = () => {
                         )}
                       </div>
 
-                      {/* Katılımcı güncelleme paneli */}
                       {expandedId === islem.id && islem.durum !== 'İptal Edildi' && (
-                        <div className="px-4 py-3 bg-indigo-50 border-t border-indigo-100 flex items-center gap-3">
+                        <div className="px-4 py-3 bg-indigo-50 border-t border-indigo-100 flex flex-wrap items-center gap-3">
                           <AlertTriangle size={14} className="text-indigo-400 shrink-0" />
                           <label className="text-xs text-slate-600 font-medium whitespace-nowrap">Yeni katılımcı sayısı:</label>
                           <input
@@ -366,6 +417,33 @@ const ProfilePage: React.FC = () => {
                             className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 text-white text-xs font-bold rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-60"
                           >
                             <Save size={12} /> {updatingId === islem.id ? '...' : 'Kaydet'}
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Oturum değiştirme paneli */}
+                      {sessionExpandedId === islem.id && islem.durum !== 'İptal Edildi' && (
+                        <div className="px-4 py-3 bg-purple-50 border-t border-purple-100 flex flex-wrap items-center gap-3">
+                          <Clock size={14} className="text-purple-400 shrink-0" />
+                          <label className="text-xs text-slate-600 font-medium whitespace-nowrap">Yeni Oturum:</label>
+                          <select
+                            defaultValue={islem.etkinlik_id}
+                            onChange={e => setSelectedSessionId(prev => ({ ...prev, [islem.id]: parseInt(e.target.value) }))}
+                            className="flex-1 px-2 py-1.5 border border-purple-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          >
+                            <option value={islem.etkinlik_id}>Şu anki: {islem.etkinlik_tarih ? formatDate(islem.etkinlik_tarih) : '-'}</option>
+                            {allEvents
+                              .filter(e => e.baslik === islem.etkinlik_baslik && e.id !== islem.etkinlik_id)
+                              .map(e => (
+                                <option key={e.id} value={e.id}>{formatDate(e.tarih_saat)} (Kalan: {e.kontenjan})</option>
+                              ))}
+                          </select>
+                          <button
+                            onClick={() => handleChangeSession(islem.id)}
+                            disabled={sessionUpdatingId === islem.id}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-purple-600 text-white text-xs font-bold rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-60"
+                          >
+                            <Save size={12} /> {sessionUpdatingId === islem.id ? '...' : 'Değiştir'}
                           </button>
                         </div>
                       )}

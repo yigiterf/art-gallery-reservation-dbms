@@ -21,6 +21,7 @@ const EventsPage: React.FC = () => {
   const [kuponData, setKuponData] = useState<{ id: number; indirim_yuzdesi: number } | null>(null);
   const [kuponLoading, setKuponLoading] = useState(false);
   const [kuponMsg, setKuponMsg] = useState('');
+  const [payError, setPayError] = useState('');
   const [reserving, setReserving] = useState(false);
 
   useEffect(() => {
@@ -53,6 +54,7 @@ const EventsPage: React.FC = () => {
     setKuponKod('');
     setKuponData(null);
     setKuponMsg('');
+    setPayError('');
   };
 
   const closeModal = () => {
@@ -101,22 +103,30 @@ const EventsPage: React.FC = () => {
       // Kontenjanı güncelle
       const res = await axios.get('http://localhost:5000/api/etkinlikler');
       setEvents(res.data);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert('İşlem başarısız oldu.');
+      setPayError(err.response?.data?.message || 'İşlem başarısız oldu.');
     } finally {
       setReserving(false);
     }
   };
 
-  // ── Filtrelenmiş Etkinlikler ──
-  const filteredEvents = events.filter(e =>
+  // ── Filtrelenmiş ve Gruplanmış Etkinlikler ──
+  const filteredEvents = Object.values(events.filter(e =>
     e.baslik.toLocaleLowerCase('tr-TR').includes(searchQuery.toLocaleLowerCase('tr-TR'))
-  ).sort((a, b) => {
+  ).reduce((acc: any, event: any) => {
+    // Group by title
+    if (!acc[event.baslik]) {
+      acc[event.baslik] = { ...event, sessions: [event] };
+    } else {
+      acc[event.baslik].sessions.push(event);
+    }
+    return acc;
+  }, {})).sort((a: any, b: any) => {
     const timeA = new Date(a.tarih_saat).getTime();
     const timeB = new Date(b.tarih_saat).getTime();
     return dateSortOrder === 'asc' ? timeA - timeB : timeB - timeA;
-  });
+  }) as any[];
 
   // ── Fiyat Hesaplama ──
   const araToplam = modalEvent ? modalEvent.ucret * katilimci : 0;
@@ -209,6 +219,19 @@ const EventsPage: React.FC = () => {
                     <h3 className="font-bold text-xl text-slate-800 line-clamp-2 pr-4">{event.baslik}</h3>
                     <div className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg font-bold shrink-0">₺{event.ucret}</div>
                   </div>
+                  
+                  {event.sessions && event.sessions.length > 1 && (
+                    <div className="mb-3 inline-block bg-purple-100 text-purple-700 text-xs font-bold px-2 py-1 rounded">
+                      Çoklu Oturum Mevcut ({event.sessions.length})
+                    </div>
+                  )}
+                  
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-500">
+                      {event.sanatci_adi ? event.sanatci_adi.charAt(0) : 'B'}
+                    </div>
+                    <span className="text-sm font-semibold text-slate-600">{event.sanatci_adi || 'Bilinmeyen Sanatçı'}</span>
+                  </div>
 
                   <div className="space-y-3 mb-6 flex-1">
                     <div className="flex items-center gap-3 text-slate-600">
@@ -266,6 +289,33 @@ const EventsPage: React.FC = () => {
 
             <h2 className="text-2xl font-black text-slate-800 mb-1">Rezervasyon Yap</h2>
             <p className="text-slate-500 text-sm mb-6 line-clamp-1">{modalEvent.baslik}</p>
+
+            {/* Oturum Seçimi */}
+            {modalEvent.sessions && modalEvent.sessions.length > 1 && (
+              <div className="mb-5">
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Oturum (Tarih & Saat)</label>
+                <div className="relative">
+                  <select
+                    value={modalEvent.id}
+                    onChange={(e) => {
+                      const selectedSession = modalEvent.sessions.find((s: any) => s.id === Number(e.target.value));
+                      if (selectedSession) {
+                        setModalEvent({ ...selectedSession, sessions: modalEvent.sessions });
+                        setKatilimci(1); // Reset participant count on session change
+                      }
+                    }}
+                    className="w-full appearance-none pl-4 pr-10 py-3 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 bg-slate-50 hover:bg-white focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-sm transition-all"
+                  >
+                    {modalEvent.sessions.map((session: any) => (
+                      <option key={session.id} value={session.id}>
+                        {formatDate(session.tarih_saat)} - {formatTime(session.tarih_saat)} (Kalan: {session.kontenjan})
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                </div>
+              </div>
+            )}
 
             {/* Katılımcı sayısı */}
             <div className="mb-5">
@@ -353,6 +403,13 @@ const EventsPage: React.FC = () => {
                 <span className="text-indigo-600">₺{finalToplam}</span>
               </div>
             </div>
+
+            {payError && (
+              <div className="bg-rose-50 border border-rose-200 text-rose-600 px-4 py-3 rounded-xl text-sm font-semibold mb-6 flex items-center gap-2">
+                <X size={18} className="shrink-0" />
+                <span>{payError}</span>
+              </div>
+            )}
 
             <button
               onClick={handleReservation}

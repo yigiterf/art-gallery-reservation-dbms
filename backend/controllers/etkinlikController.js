@@ -3,7 +3,12 @@ const pool = require('../db');
 // Tüm etkinlikleri getir
 exports.getAllEtkinlikler = async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM etkinlikler ORDER BY tarih_saat ASC');
+    const result = await pool.query(`
+      SELECT e.*, s.ad AS sanatci_adi 
+      FROM etkinlikler e 
+      LEFT JOIN sanatcilar s ON e.sanatci_id = s.id 
+      ORDER BY e.tarih_saat ASC
+    `);
     res.json(result.rows);
   } catch (error) {
     console.error('Etkinlikleri getirme hatası:', error);
@@ -13,16 +18,51 @@ exports.getAllEtkinlikler = async (req, res) => {
 
 // Etkinlik Oluştur
 exports.createEtkinlik = async (req, res) => {
-  const { baslik, tarih_saat, ucret, kontenjan, sanatci_id } = req.body;
+  const { baslik, tarih_saat_listesi, ucret, kontenjan, sanatci_id, tarih_saat } = req.body;
   try {
-    const result = await pool.query(
-      'INSERT INTO etkinlikler (baslik, tarih_saat, ucret, kontenjan, sanatci_id) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [baslik, tarih_saat, ucret, kontenjan, sanatci_id]
-    );
-    res.status(201).json(result.rows[0]);
+    // Geriye dönük uyumluluk veya tekli tarih için
+    const tarihler = tarih_saat_listesi || (tarih_saat ? [tarih_saat] : []);
+    
+    if (tarihler.length === 0) {
+      return res.status(400).json({ message: 'En az bir tarih/saat seçilmelidir.' });
+    }
+
+    const insertedRows = [];
+    for (const tarih of tarihler) {
+        const result = await pool.query(
+          'INSERT INTO etkinlikler (baslik, tarih_saat, ucret, kontenjan, sanatci_id) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+          [baslik, tarih, ucret, kontenjan, sanatci_id]
+        );
+        insertedRows.push(result.rows[0]);
+    }
+    
+    res.status(201).json(insertedRows[0]); // Sadece ilkini dönüyoruz uyumluluk için
   } catch (error) {
     console.error('Etkinlik ekleme hatası:', error);
-    res.status(500).json({ message: 'Etkinlik oluşturulamadı.' });
+    res.status(500).json({ message: 'Etkinlik oluşturulamadı. Detay: ' + (error.stack || JSON.stringify(error) || error) });
+  }
+};
+
+// Satıcıya ait etkinlikleri getir (Etkinliklerim Tab)
+exports.getEtkinliklerim = async (req, res) => {
+  const { sanatci_id } = req.params;
+  try {
+    const result = await pool.query('SELECT * FROM etkinlikler WHERE sanatci_id = $1 ORDER BY tarih_saat DESC', [sanatci_id]);
+    res.json(result.rows);
+  } catch (error) {
+    res.status(500).json({ message: 'Etkinlikler alınamadı.' });
+  }
+};
+
+// Etkinlik Kontenjan Güncelle
+exports.updateKontenjan = async (req, res) => {
+  const { id } = req.params;
+  const { kontenjan } = req.body;
+  try {
+    await pool.query('UPDATE etkinlikler SET kontenjan = $1 WHERE id = $2', [kontenjan, id]);
+    res.json({ message: 'Kontenjan güncellendi.' });
+  } catch (error) {
+    res.status(500).json({ message: 'Kontenjan güncellenemedi.' });
   }
 };
 

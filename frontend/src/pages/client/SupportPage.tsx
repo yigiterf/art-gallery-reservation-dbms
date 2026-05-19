@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
   ArrowLeft, LifeBuoy, Send, MessageSquare, CheckCircle, Clock, AlertCircle, ChevronDown, ChevronUp
@@ -60,10 +60,6 @@ const ClientSupportPage: React.FC = () => {
       setSubmitting(false);
     }
   };
-
-  const formatDate = (d: string) => new Date(d).toLocaleDateString('tr-TR', {
-    year: 'numeric', month: 'long', day: 'numeric'
-  });
 
   const getStatusIcon = (durum: string) => {
     switch (durum) {
