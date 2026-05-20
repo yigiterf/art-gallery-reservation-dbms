@@ -3,7 +3,7 @@ import axios from 'axios';
 import {
   Users, ImageIcon, CalendarDays, ShoppingCart, TrendingUp,
   Heart, MessageSquare, Star, Percent, XCircle, BarChart2,
-  DollarSign, Package, Activity
+  DollarSign, Package, Activity, Landmark
 } from 'lucide-react';
 
 interface Stats {
@@ -13,6 +13,7 @@ interface Stats {
   transactions: number;
   cancelledTransactions: number;
   toplamGelir: number;
+  netKar: number;
   recentTransactions: any[];
   odemeYontemiDagilimi: { odeme_yontemi: string; sayi: string }[];
   topEserler: {
@@ -109,6 +110,11 @@ const Dashboard: React.FC = () => {
       value: `₺${(stats?.toplamGelir || 0).toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
       icon: <DollarSign size={22} />, color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-100'
     },
+    {
+      label: 'Net Kâr (%15)',
+      value: `₺${(stats?.netKar || 0).toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
+      icon: <Landmark size={22} />, color: 'text-teal-600', bg: 'bg-teal-50', border: 'border-teal-100'
+    },
     { label: 'İptal Edilen', value: stats?.cancelledTransactions || 0, icon: <XCircle size={22} />, color: 'text-slate-500', bg: 'bg-slate-50', border: 'border-slate-200' },
   ];
 
@@ -116,7 +122,7 @@ const Dashboard: React.FC = () => {
     <div className="space-y-8 animate-in fade-in duration-500">
 
       {/* ── KPI Kartları ── */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
         {topCards.map((card, i) => (
           <div key={i} className={`bg-white rounded-2xl p-5 border ${card.border} shadow-sm hover:shadow-md transition-all duration-200`}>
             <div className={`w-10 h-10 rounded-xl ${card.bg} ${card.color} flex items-center justify-center mb-3`}>

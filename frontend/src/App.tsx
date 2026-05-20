@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import PageTitleUpdater from './hooks/usePageTitle';
 
 // Admin Pages
 import AdminLayout from './layouts/AdminLayout';
@@ -33,6 +34,7 @@ import './index.css';
 function App() {
   return (
     <Router>
+      <PageTitleUpdater />
       <Routes>
         <Route path="/" element={<HomePage />} />
         

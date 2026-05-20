@@ -78,7 +78,7 @@ const Transactions: React.FC = () => {
       <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">İşlem & Sipariş Yönetimi</h1>
-          <p className="text-slate-500 text-sm mt-1">Tüm satın alma ve rezervasyon işlemlerini takip edin.</p>
+          <p className="text-slate-500 text-sm mt-1">Tüm satın alma ve rezervasyon işlemlerini takip edin. <span className="text-amber-600 font-semibold">Yönetici müdahalesi</span> ile satıcı kararlarını geçersiz kılabilirsiniz.</p>
         </div>
         <div className="text-right">
           <p className="text-xs text-slate-400 font-medium uppercase tracking-wide mb-1">Onaylı Gelir</p>
@@ -125,7 +125,7 @@ const Transactions: React.FC = () => {
                 <th className="px-6 py-4">Ödeme</th>
                 <th className="px-6 py-4">Tarih</th>
                 <th className="px-6 py-4">Durum</th>
-                <th className="px-6 py-4 text-right">Güncelle</th>
+                <th className="px-6 py-4 text-right">Yönetici Müdahalesi</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">

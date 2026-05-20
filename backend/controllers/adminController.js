@@ -84,13 +84,17 @@ exports.getStats = async (req, res) => {
       ORDER BY gun ASC
     `);
 
+    const toplamGelir = parseFloat(revenueRes.rows[0].toplam);
+    const netKar = toplamGelir * 0.15; // Platform %15 komisyon
+
     res.json({
       users: parseInt(usersCount.rows[0].count),
       artworks: parseInt(artworksCount.rows[0].count),
       events: parseInt(eventsCount.rows[0].count),
       transactions: parseInt(transactionsCount.rows[0].count),
       cancelledTransactions: parseInt(cancelledCount.rows[0].count),
-      toplamGelir: parseFloat(revenueRes.rows[0].toplam),
+      toplamGelir,
+      netKar,
       recentTransactions: recentTransactions.rows,
       odemeYontemiDagilimi: odemeRes.rows,
       topEserler: eserStatsRes.rows,
@@ -290,9 +294,16 @@ exports.deleteReview = async (req, res) => {
 exports.getSupportTickets = async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT d.*, k.ad_soyad 
+      SELECT d.*, k.ad_soyad,
+             e.baslik AS eser_baslik,
+             et.baslik AS etkinlik_baslik,
+             i.toplam_tutar AS islem_tutar,
+             i.durum AS islem_durum
       FROM destek_talepleri d
       LEFT JOIN kullanicilar k ON d.kullanici_id = k.id
+      LEFT JOIN islemler i ON d.islem_id = i.id
+      LEFT JOIN eserler e ON i.eser_id = e.id
+      LEFT JOIN etkinlikler et ON i.etkinlik_id = et.id
       ORDER BY d.id DESC
     `);
     res.json(result.rows);

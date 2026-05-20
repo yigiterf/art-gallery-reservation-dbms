@@ -79,6 +79,7 @@ CREATE TABLE yorumlar (
 CREATE TABLE destek_talepleri (
     id SERIAL PRIMARY KEY,
     kullanici_id INTEGER REFERENCES kullanicilar(id),
+    islem_id INTEGER REFERENCES islemler(id),
     konu VARCHAR(150) NOT NULL,
     mesaj TEXT NOT NULL,
     durum VARCHAR(50) DEFAULT 'Açık',

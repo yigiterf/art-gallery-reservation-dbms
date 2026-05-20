@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { HeadphonesIcon, CheckCircle, Clock, XCircle, MessageCircle, ChevronDown, ChevronUp, Send } from 'lucide-react';
+import { HeadphonesIcon, CheckCircle, Clock, XCircle, MessageCircle, ChevronDown, ChevronUp, Send, ShoppingBag, CalendarDays } from 'lucide-react';
 
 interface Ticket {
   id: number;
@@ -10,6 +10,11 @@ interface Ticket {
   mesaj: string;
   durum: string;
   admin_yaniti: string | null;
+  islem_id: number | null;
+  eser_baslik: string | null;
+  etkinlik_baslik: string | null;
+  islem_tutar: number | null;
+  islem_durum: string | null;
 }
 
 const STATUS_CONFIG: Record<string, { icon: React.ReactNode; color: string; label: string }> = {
@@ -132,6 +137,12 @@ const Support: React.FC = () => {
                       )}
                     </div>
                     <p className="text-sm font-medium text-slate-700 mt-0.5 truncate">{ticket.konu}</p>
+                    {ticket.islem_id && (
+                      <span className="flex items-center gap-1 mt-1 text-[11px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-full w-fit">
+                        {ticket.eser_baslik ? <ShoppingBag size={10} /> : <CalendarDays size={10} />}
+                        #{ticket.islem_id} — {ticket.eser_baslik || ticket.etkinlik_baslik}
+                      </span>
+                    )}
                   </div>
                   <div className="shrink-0 text-slate-400">
                     {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
@@ -141,6 +152,27 @@ const Support: React.FC = () => {
                 {/* Expanded content */}
                 {isExpanded && (
                   <div className="border-t border-slate-100 p-5 space-y-4 bg-slate-50/40">
+                    {/* Linked transaction info */}
+                    {ticket.islem_id && (
+                      <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-indigo-100">
+                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${ticket.eser_baslik ? 'bg-indigo-100 text-indigo-600' : 'bg-amber-100 text-amber-600'}`}>
+                          {ticket.eser_baslik ? <ShoppingBag size={16} /> : <CalendarDays size={16} />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] font-bold text-slate-400 uppercase">İlişkili Sipariş</p>
+                          <p className="text-sm font-semibold text-slate-700 truncate">#{ticket.islem_id} — {ticket.eser_baslik || ticket.etkinlik_baslik}</p>
+                        </div>
+                        {ticket.islem_tutar && <span className="text-sm font-bold text-slate-600 shrink-0">₺{ticket.islem_tutar}</span>}
+                        {ticket.islem_durum && (
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0 ${
+                            ticket.islem_durum === 'Onaylandı' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
+                            ticket.islem_durum === 'Bekliyor' ? 'bg-amber-50 text-amber-600 border-amber-200' :
+                            'bg-rose-50 text-rose-600 border-rose-200'
+                          }`}>{ticket.islem_durum}</span>
+                        )}
+                      </div>
+                    )}
+
                     {/* User message */}
                     <div className="bg-white rounded-xl p-4 border border-slate-100">
                       <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Kullanıcı Mesajı</p>

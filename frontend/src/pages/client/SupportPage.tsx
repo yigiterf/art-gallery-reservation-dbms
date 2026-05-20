@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import {
-  ArrowLeft, LifeBuoy, Send, MessageSquare, CheckCircle, Clock, AlertCircle, ChevronDown, ChevronUp
+  ArrowLeft, LifeBuoy, Send, MessageSquare, CheckCircle, Clock, AlertCircle,
+  ChevronDown, ChevronUp, ShoppingBag, CalendarDays, Package
 } from 'lucide-react';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -12,6 +13,17 @@ const STATUS_COLORS: Record<string, string> = {
   'Kapatıldı': 'bg-slate-100 text-slate-500 border-slate-200',
 };
 
+interface UserTransaction {
+  id: number;
+  eser_id: number | null;
+  etkinlik_id: number | null;
+  eser_baslik: string | null;
+  etkinlik_baslik: string | null;
+  toplam_tutar: number;
+  durum: string;
+  islem_tarihi: string;
+}
+
 const ClientSupportPage: React.FC = () => {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -20,8 +32,11 @@ const ClientSupportPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
+  // Müşterinin işlemleri
+  const [myTransactions, setMyTransactions] = useState<UserTransaction[]>([]);
+
   // Form
-  const [form, setForm] = useState({ konu: '', mesaj: '' });
+  const [form, setForm] = useState({ konu: '', mesaj: '', islem_id: '' });
   const [submitting, setSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
@@ -34,9 +49,17 @@ const ClientSupportPage: React.FC = () => {
     finally { setLoading(false); }
   };
 
+  const fetchMyTransactions = async () => {
+    try {
+      const res = await axios.get(`http://localhost:5000/api/islemler/kullanici/${user.id}`);
+      setMyTransactions(res.data);
+    } catch (e) { console.error(e); }
+  };
+
   useEffect(() => {
     if (!user.id) { navigate('/login'); return; }
     fetchTickets();
+    fetchMyTransactions();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -50,8 +73,9 @@ const ClientSupportPage: React.FC = () => {
         kullanici_id: user.id,
         konu: form.konu,
         mesaj: form.mesaj,
+        islem_id: form.islem_id ? parseInt(form.islem_id) : null,
       });
-      setForm({ konu: '', mesaj: '' });
+      setForm({ konu: '', mesaj: '', islem_id: '' });
       setSuccessMsg('✅ Destek talebiniz başarıyla gönderildi! En kısa sürede yanıt alacaksınız.');
       await fetchTickets();
     } catch (err: any) {
@@ -68,6 +92,17 @@ const ClientSupportPage: React.FC = () => {
       default: return <AlertCircle size={14} />;
     }
   };
+
+  // Seçilen işlemin bilgisini oluştur
+  const getTransactionLabel = (tx: UserTransaction) => {
+    const type = tx.eser_id ? '🖼️ Eser' : '🎫 Etkinlik';
+    const name = tx.eser_baslik || tx.etkinlik_baslik || 'Bilinmiyor';
+    const date = new Date(tx.islem_tarihi).toLocaleDateString('tr-TR');
+    return `${type}: ${name} — ₺${tx.toplam_tutar} (${date})`;
+  };
+
+  // Seçilen işlem detayı kartı
+  const selectedTx = myTransactions.find(t => String(t.id) === form.islem_id);
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans pb-20">
@@ -92,10 +127,62 @@ const ClientSupportPage: React.FC = () => {
             <h1 className="text-2xl font-black mb-1 flex items-center gap-3">
               <LifeBuoy size={28} /> Size Nasıl Yardımcı Olabiliriz?
             </h1>
-            <p className="text-indigo-200 text-sm">Sorularınızı ve sorunlarınızı aşağıdaki form aracılığıyla bize iletin.</p>
+            <p className="text-indigo-200 text-sm">Satın aldığınız bir eser veya etkinlikle ilgili sorun yaşıyorsanız, ilgili siparişi seçerek destek talebi oluşturun.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="p-6 space-y-5">
+
+            {/* İlgili Sipariş Seçimi */}
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                İlgili Sipariş / Rezervasyon
+                <span className="text-slate-400 font-normal ml-1">(opsiyonel)</span>
+              </label>
+              <div className="relative">
+                <Package size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <select
+                  value={form.islem_id}
+                  onChange={e => setForm(f => ({ ...f, islem_id: e.target.value }))}
+                  className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm bg-white appearance-none"
+                >
+                  <option value="">-- Sipariş seçin (opsiyonel) --</option>
+                  {myTransactions.map(tx => (
+                    <option key={tx.id} value={tx.id}>
+                      #{tx.id} — {getTransactionLabel(tx)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {myTransactions.length === 0 && (
+                <p className="text-xs text-slate-400 mt-1.5 italic">Henüz bir satın alma veya rezervasyon işleminiz bulunmuyor.</p>
+              )}
+            </div>
+
+            {/* Seçilen Sipariş Detay Kartı */}
+            {selectedTx && (
+              <div className="flex items-center gap-4 p-4 bg-indigo-50 border border-indigo-100 rounded-xl animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${selectedTx.eser_id ? 'bg-indigo-100 text-indigo-600' : 'bg-amber-100 text-amber-600'}`}>
+                  {selectedTx.eser_id ? <ShoppingBag size={20} /> : <CalendarDays size={20} />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-slate-800 text-sm truncate">
+                    {selectedTx.eser_baslik || selectedTx.etkinlik_baslik}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    İşlem #{selectedTx.id} · ₺{selectedTx.toplam_tutar} · {new Date(selectedTx.islem_tarihi).toLocaleDateString('tr-TR')}
+                  </p>
+                </div>
+                <span className={`px-2.5 py-1 rounded-full text-xs font-bold border shrink-0 ${
+                  selectedTx.durum === 'Onaylandı' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
+                  selectedTx.durum === 'Bekliyor' ? 'bg-amber-50 text-amber-600 border-amber-200' :
+                  'bg-rose-50 text-rose-600 border-rose-200'
+                }`}>
+                  {selectedTx.durum}
+                </span>
+              </div>
+            )}
+
+            {/* Konu */}
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">Konu *</label>
               <select
@@ -115,6 +202,7 @@ const ClientSupportPage: React.FC = () => {
               </select>
             </div>
 
+            {/* Mesaj */}
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">Mesajınız *</label>
               <textarea
@@ -182,7 +270,16 @@ const ClientSupportPage: React.FC = () => {
                       </div>
                       <div className="min-w-0">
                         <p className="font-bold text-slate-800 truncate">{ticket.konu}</p>
-                        <p className="text-xs text-slate-400 mt-0.5 truncate">{ticket.mesaj}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <p className="text-xs text-slate-400 truncate">{ticket.mesaj}</p>
+                          {/* İlişkili işlem badge */}
+                          {ticket.islem_id && (
+                            <span className="flex items-center gap-1 bg-indigo-50 text-indigo-600 text-[10px] font-bold px-2 py-0.5 rounded-full border border-indigo-100 shrink-0">
+                              {ticket.eser_baslik ? <ShoppingBag size={10} /> : <CalendarDays size={10} />}
+                              #{ticket.islem_id}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
@@ -195,6 +292,34 @@ const ClientSupportPage: React.FC = () => {
 
                   {expandedId === ticket.id && (
                     <div className="px-5 pb-5 pt-0 border-t border-slate-50 space-y-4">
+
+                      {/* İlişkili Sipariş Bilgisi */}
+                      {ticket.islem_id && (
+                        <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${ticket.eser_baslik ? 'bg-indigo-100 text-indigo-600' : 'bg-amber-100 text-amber-600'}`}>
+                            {ticket.eser_baslik ? <ShoppingBag size={16} /> : <CalendarDays size={16} />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-slate-400 uppercase">İlişkili Sipariş</p>
+                            <p className="text-sm font-semibold text-slate-700 truncate">
+                              #{ticket.islem_id} — {ticket.eser_baslik || ticket.etkinlik_baslik || 'Bilinmiyor'}
+                            </p>
+                          </div>
+                          {ticket.islem_tutar && (
+                            <span className="text-sm font-bold text-slate-600 shrink-0">₺{ticket.islem_tutar}</span>
+                          )}
+                          {ticket.islem_durum && (
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border shrink-0 ${
+                              ticket.islem_durum === 'Onaylandı' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
+                              ticket.islem_durum === 'Bekliyor' ? 'bg-amber-50 text-amber-600 border-amber-200' :
+                              'bg-rose-50 text-rose-600 border-rose-200'
+                            }`}>
+                              {ticket.islem_durum}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
                       {/* Mesaj */}
                       <div className="bg-slate-50 rounded-xl p-4">
                         <p className="text-xs font-bold text-slate-400 uppercase mb-2">Mesajınız</p>
